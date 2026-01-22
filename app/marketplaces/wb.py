@@ -17,11 +17,17 @@ class WildberriesClient(MarketplaceClient):
         self.rate_delay_sec = rate_delay_sec
 
     def fetch_unanswered(self) -> list[FeedbackItem]:
+        items, _ = self.fetch_unanswered_with_raw()
+        return items
+
+    def fetch_unanswered_with_raw(self) -> tuple[list[FeedbackItem], dict[str, Any] | None]:
         all_items: list[FeedbackItem] = []
+        last_payload: dict[str, Any] | None = None
         skip = 0
         take = 100
         while True:
             data = self._fetch_page(is_answered=0, take=take, skip=skip)
+            last_payload = data
             feedbacks = (data.get("data") or {}).get("feedbacks") or []
             if not feedbacks:
                 break
@@ -29,7 +35,7 @@ class WildberriesClient(MarketplaceClient):
                 all_items.append(self._normalize(item))
             skip += len(feedbacks)
             time.sleep(self.rate_delay_sec)
-        return all_items
+        return all_items, last_payload
 
     def _fetch_page(self, is_answered: int, take: int, skip: int) -> dict[str, Any]:
         url = "https://feedbacks-api.wildberries.ru/api/v1/feedbacks"

@@ -36,10 +36,12 @@ def get_settings() -> Settings:
         prompt_template=os.getenv(
             "PROMPT_TEMPLATE",
             (
-                "You are a marketplace support agent. "
-                "Reply politely and concisely in Russian. "
-                "Customer text: {text}. Rating: {rating}. "
-                "Pros: {pros}. Cons: {cons}. Product: {product_name}."
+                "Ты — специалист поддержки маркетплейса. "
+                "Ответь вежливо и кратко. "
+                "Отвечай строго на русском. "
+                "Верни только текст ответа клиенту без вступлений и пояснений. "
+                "Текст клиента: {text}. Оценка: {rating}. "
+                "Плюсы: {pros}. Минусы: {cons}. Товар: {product_name}."
             ),
         ),
     )

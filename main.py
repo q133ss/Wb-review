@@ -1,3 +1,4 @@
+import json
 import time
 
 from app.ai import build_prompt, generate_response
@@ -18,7 +19,7 @@ from app.marketplaces.wb import WildberriesClient
 
 def ensure_prompt(conn, default_prompt: str) -> str:
     existing = get_setting(conn, "prompt_template")
-    if existing:
+    if existing == default_prompt:
         return existing
     set_setting(conn, "prompt_template", default_prompt)
     return default_prompt
@@ -85,9 +86,14 @@ def poll_wb(conn, settings) -> None:
         return
     client = WildberriesClient(settings.wb_api_token)
     marketplace_id = get_or_create_marketplace(conn, client.code, client.name)
-    items = client.fetch_unanswered()
+    print("WB poll: fetching unanswered feedbacks...")
+    items, raw_payload = client.fetch_unanswered_with_raw()
+    print(f"WB poll: received {len(items)} feedback(s).")
     if items:
         upsert_feedbacks(conn, marketplace_id, items)
+        if raw_payload is not None:
+            with open("wb_feedbacks_last_response.json", "w", encoding="utf-8") as f:
+                json.dump(raw_payload, f, ensure_ascii=False, indent=2)
     process_ai(conn, settings, marketplace_id)
 
 
