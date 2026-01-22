@@ -13,11 +13,7 @@
         {% endif %}
       </p>
     </div>
-    <div class="hero-meta">
-      <div class="chip">Доступы в БД</div>
-      <div class="chip">Редактируемые черновики</div>
-      <div class="chip">Готово к отправке WB</div>
-    </div>
+    
   </section>
 
   {% if tab == "inbox" %}
@@ -29,7 +25,7 @@
               <div>
                 <div class="card-title">{{ item["product_name"] or "Товар не указан" }}</div>
                 <div class="card-subtitle">
-                  {{ item["created_at"] or "Дата не указана" }} · Оценка {{ item["rating"] or "-" }}
+                  {{ (item["created_at"] | format_dt) or "Дата не указана" }} · Оценка {{ item["rating"] or "-" }}
                 </div>
               </div>
               {% set status = item["status"] %}
@@ -87,7 +83,7 @@
               <div>
                 <div class="card-title">{{ item["product_name"] or "Товар не указан" }}</div>
                 <div class="card-subtitle">
-                  Отправлено {{ item["sent_at"] or "Время не указано" }} · Оценка {{ item["rating"] or "-" }}
+                  Отправлено {{ (item["sent_at"] | format_dt) or "Время не указано" }} · Оценка {{ item["rating"] or "-" }}
                 </div>
               </div>
               <div class="badge sent">отправлено</div>
@@ -169,7 +165,7 @@
               <div class="card-header">
                 <div>
                   <div class="card-title">{{ item["product_name"] or "Пример" }}</div>
-                  <div class="card-subtitle">Оценка {{ item["rating"] or "-" }} · {{ item["created_at"] }}</div>
+                  <div class="card-subtitle">Оценка {{ item["rating"] or "-" }} · {{ item["created_at"] | format_dt }}</div>
                 </div>
                 <div class="badge neutral">пример</div>
               </div>
@@ -190,7 +186,7 @@
                     </label>
                     <label class="field">
                       <span>Дата отзыва</span>
-                      <input type="text" name="feedback_created_at" value="{{ item['feedback_created_at'] or '' }}" />
+                      <input type="text" name="feedback_created_at" value="{{ item['feedback_created_at'] | format_dt }}" />
                     </label>
                   </div>
                   <label class="field">

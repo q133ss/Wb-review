@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from datetime import datetime
 from functools import wraps
 from typing import Callable
 
@@ -40,6 +41,26 @@ from app.marketplaces.wb import WildberriesClient
 load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("ADMIN_SECRET_KEY", "dev-secret-key")
+
+
+@app.template_filter("format_dt")
+def format_dt(value: str | None) -> str:
+    if not value:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            parsed = datetime.strptime(text, fmt)
+            return parsed.strftime("%d-%m-%Y %H:%M")
+        except ValueError:
+            continue
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return parsed.strftime("%d-%m-%Y %H:%M")
+    except ValueError:
+        return text
 
 
 def _get_settings():

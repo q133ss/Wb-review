@@ -58,7 +58,7 @@ class WildberriesClient(MarketplaceClient):
         return payload
 
     def send_response(self, feedback_id: str, text: str) -> dict[str, Any]:
-        url = "https://feedbacks-api.wildberries.ru/api/v1/feedbacks"
+        url = "https://feedbacks-api.wildberries.ru/api/v1/feedbacks/answer"
         headers = {
             "Authorization": self.api_token,
             "Accept": "application/json",
@@ -66,8 +66,10 @@ class WildberriesClient(MarketplaceClient):
         }
         payload = {"id": feedback_id, "text": text}
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
-        if resp.status_code != 200:
+        if resp.status_code not in (200, 204):
             raise RuntimeError(f"WB API error {resp.status_code}: {resp.text[:200]}")
+        if resp.status_code == 204:
+            return {"status": "no_content"}
         try:
             data = resp.json()
         except Exception as exc:

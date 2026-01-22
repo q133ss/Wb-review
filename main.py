@@ -11,6 +11,7 @@ from app.db import (
     get_setting,
     init_db,
     insert_or_touch_feedback,
+    mark_sent,
     mark_skipped,
     set_setting,
     update_ai_response,
@@ -48,17 +49,26 @@ def upsert_feedbacks(conn, marketplace_id: int, items):
     return stored
 
 
-def should_auto_reply(rating: int | None) -> bool:
+def _reply_mode(rating: int | None) -> str:
     if rating is None:
-        return False
-    return int(rating) >= 4
+        return "skip"
+    try:
+        value = int(rating)
+    except (TypeError, ValueError):
+        return "skip"
+    if value >= 4:
+        return "auto_send"
+    if value >= 1:
+        return "manual_confirm"
+    return "skip"
 
 
-def process_ai(conn, settings, marketplace_id: int) -> None:
+def process_ai(conn, settings, marketplace_id: int, client: WildberriesClient) -> None:
     prompt_template = ensure_prompt(conn, settings.prompt_template)
     rows = get_new_feedbacks(conn, marketplace_id)
     for row in rows:
-        if not should_auto_reply(row["rating"]):
+        mode = _reply_mode(row["rating"])
+        if mode == "skip":
             mark_skipped(conn, row["id"], "manual_needed")
             continue
         if not settings.openai_api_key:
@@ -84,6 +94,12 @@ def process_ai(conn, settings, marketplace_id: int) -> None:
             prompt=prompt,
         )
         update_ai_response(conn, row["id"], answer, settings.openai_model, prompt)
+        if mode == "auto_send":
+            try:
+                sent_payload = client.send_response(str(row["external_id"]), answer)
+                mark_sent(conn, row["id"], answer, sent_payload)
+            except Exception as exc:
+                print(f"Auto-send error for feedback {row['external_id']}: {exc}")
 
 
 def poll_wb(conn, settings) -> None:
@@ -100,7 +116,7 @@ def poll_wb(conn, settings) -> None:
         if raw_payload is not None:
             with open("wb_feedbacks_last_response.json", "w", encoding="utf-8") as f:
                 json.dump(raw_payload, f, ensure_ascii=False, indent=2)
-    process_ai(conn, settings, marketplace_id)
+    process_ai(conn, settings, marketplace_id, client)
 
 
 def main() -> None:
