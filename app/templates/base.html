@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>РђРґРјРёРЅРєР° РѕС‚Р·С‹РІРѕРІ WB</title>
+    <title>ИИ ответы WB</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
   </head>
   <body>
@@ -13,35 +13,20 @@
         <div class="brand">
           <div class="brand-mark">WB</div>
           <div>
-            <div class="brand-title">РђРґРјРёРЅРєР° РѕС‚Р·С‹РІРѕРІ</div>
-            <div class="brand-subtitle">РљРѕРЅС‚СЂРѕР»СЊ РѕС‚Р·С‹РІРѕРІ Wildberries</div>
+            <div class="brand-title">ИИ ответы</div>
           </div>
         </div>
         <nav class="nav">
-          <a class="nav-link {{ 'active' if tab == 'inbox' else '' }}" href="{{ url_for('admin', tab='inbox') }}">Р’С…РѕРґСЏС‰РёРµ</a>
-          <a class="nav-link {{ 'active' if tab == 'sent' else '' }}" href="{{ url_for('admin', tab='sent') }}">РћС‚РїСЂР°РІР»РµРЅРЅС‹Рµ</a>
-          <a class="nav-link {{ 'active' if tab == 'examples' else '' }}" href="{{ url_for('admin', tab='examples') }}">РџСЂРёРјРµСЂС‹ РР</a>
+          <a class="nav-link {{ 'active' if tab == 'inbox' else '' }}" href="{{ url_for('admin', tab='inbox') }}">Входящие</a>
+          <a class="nav-link {{ 'active' if tab == 'sent' else '' }}" href="{{ url_for('admin', tab='sent') }}">Отправленные</a>
+          <a class="nav-link {{ 'active' if tab == 'examples' else '' }}" href="{{ url_for('admin', tab='examples') }}">Примеры ИИ</a>
         </nav>
         <form class="logout" method="post" action="{{ url_for('logout') }}">
-          <button class="btn ghost" type="submit">Р’С‹Р№С‚Рё</button>
+          <button class="btn ghost" type="submit">Выйти</button>
         </form>
       </aside>
 
       <div class="content">
-        <header class="topbar">
-          <div class="topbar-title">WB Review Admin</div>
-          <div class="topbar-actions">
-            <div class="pill">Support</div>
-            <div class="user-chip">
-              <span class="user-avatar">WB</span>
-              <div>
-                <div class="user-name">Admin</div>
-                <div class="user-role">Dashboard</div>
-              </div>
-            </div>
-          </div>
-        </header>
-
         <main class="shell">
           {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
