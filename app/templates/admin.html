@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="hero">
+    <div>
+      <h1>{{ "Входящие" if tab == "inbox" else ("Отправленные" if tab == "sent" else "Примеры ИИ") }}</h1>
+      <p class="muted">
+        {% if tab == "inbox" %}
+          Просматривайте новые отзывы, редактируйте ответы ИИ и отправляйте их в WB.
+        {% elif tab == "sent" %}
+          История отзывов, уже отправленных в WB.
+        {% else %}
+          Настройка примеров, используемых в промптах для ИИ.
+        {% endif %}
+      </p>
+    </div>
+    <div class="hero-meta">
+      <div class="chip">Доступы в БД</div>
+      <div class="chip">Редактируемые черновики</div>
+      <div class="chip">Готово к отправке WB</div>
+    </div>
+  </section>
+
+  {% if tab == "inbox" %}
+    <section class="grid">
+      {% if feedbacks %}
+        {% for item in feedbacks %}
+          <div class="card" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">{{ item["product_name"] or "Товар не указан" }}</div>
+                <div class="card-subtitle">
+                  {{ item["created_at"] or "Дата не указана" }} · Оценка {{ item["rating"] or "-" }}
+                </div>
+              </div>
+              {% set status = item["status"] %}
+              <div class="badge">
+                {{
+                  "новый" if status == "new" else
+                  "ответ ИИ" if status == "ai_generated" else
+                  "нужен ответ" if status == "manual_needed" else
+                  "нет ключа ИИ" if status == "ai_skipped_no_key" else
+                  status
+                }}
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="feedback-block">
+                <div class="label">Текст клиента</div>
+                <div class="value">{{ item["text"] or "-" }}</div>
+              </div>
+              <div class="feedback-row">
+                <div class="feedback-block">
+                  <div class="label">Плюсы</div>
+                  <div class="value">{{ item["pros"] or "-" }}</div>
+                </div>
+                <div class="feedback-block">
+                  <div class="label">Минусы</div>
+                  <div class="value">{{ item["cons"] or "-" }}</div>
+                </div>
+              </div>
+              <form class="form" method="post">
+                <label class="field">
+                  <span>Черновик ответа</span>
+                  <textarea name="response_text" rows="4">{{ item["draft_response"] or item["ai_response"] or "" }}</textarea>
+                </label>
+                <div class="form-actions">
+                  <button class="btn ghost" type="submit" formaction="{{ url_for('save_feedback', feedback_id=item['id']) }}">Сохранить</button>
+                  <button class="btn primary" type="submit" formaction="{{ url_for('send_feedback', feedback_id=item['id']) }}">Отправить в WB</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <h3>Нет новых отзывов</h3>
+          <p>Сейчас нет ожидающих обработки отзывов.</p>
+        </div>
+      {% endif %}
+    </section>
+  {% elif tab == "sent" %}
+    <section class="grid">
+      {% if feedbacks %}
+        {% for item in feedbacks %}
+          <div class="card" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">{{ item["product_name"] or "Товар не указан" }}</div>
+                <div class="card-subtitle">
+                  Отправлено {{ item["sent_at"] or "Время не указано" }} · Оценка {{ item["rating"] or "-" }}
+                </div>
+              </div>
+              <div class="badge sent">отправлено</div>
+            </div>
+            <div class="card-body">
+              <div class="feedback-block">
+                <div class="label">Текст клиента</div>
+                <div class="value">{{ item["text"] or "-" }}</div>
+              </div>
+              <div class="feedback-block">
+                <div class="label">Отправленный ответ</div>
+                <div class="value">{{ item["sent_response"] or "-" }}</div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <h3>Отправленных отзывов нет</h3>
+          <p>После отправки ответы появятся здесь.</p>
+        </div>
+      {% endif %}
+    </section>
+  {% else %}
+    <section class="split">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Добавить пример</div>
+            <div class="card-subtitle">Используется для стилистики ответов ИИ.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form class="form" method="post" action="{{ url_for('create_example') }}">
+            <div class="feedback-row">
+              <label class="field">
+                <span>Внешний id (необязательно)</span>
+                <input type="text" name="external_id" />
+              </label>
+              <label class="field">
+                <span>Оценка</span>
+                <input type="number" name="rating" min="1" max="5" />
+              </label>
+            </div>
+            <label class="field">
+              <span>Название товара</span>
+              <input type="text" name="product_name" />
+            </label>
+            <label class="field">
+              <span>Имя пользователя</span>
+              <input type="text" name="user_name" />
+            </label>
+            <label class="field">
+              <span>Текст клиента</span>
+              <textarea name="text" rows="3"></textarea>
+            </label>
+            <div class="feedback-row">
+              <label class="field">
+                <span>Плюсы</span>
+                <input type="text" name="pros" />
+              </label>
+              <label class="field">
+                <span>Минусы</span>
+                <input type="text" name="cons" />
+              </label>
+            </div>
+            <label class="field">
+              <span>Текст ответа</span>
+              <textarea name="answer_text" rows="3" required></textarea>
+            </label>
+            <button class="btn primary" type="submit">Сохранить пример</button>
+          </form>
+        </div>
+      </div>
+      <div class="stack">
+        {% if examples %}
+          {% for item in examples %}
+            <div class="card" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">{{ item["product_name"] or "Пример" }}</div>
+                  <div class="card-subtitle">Оценка {{ item["rating"] or "-" }} · {{ item["created_at"] }}</div>
+                </div>
+                <div class="badge neutral">пример</div>
+              </div>
+              <div class="card-body">
+                <form class="form" method="post" action="{{ url_for('update_example', example_id=item['id']) }}">
+                  <label class="field">
+                    <span>Название товара</span>
+                    <input type="text" name="product_name" value="{{ item['product_name'] or '' }}" />
+                  </label>
+                  <label class="field">
+                    <span>Имя пользователя</span>
+                    <input type="text" name="user_name" value="{{ item['user_name'] or '' }}" />
+                  </label>
+                  <div class="feedback-row">
+                    <label class="field">
+                      <span>Оценка</span>
+                      <input type="number" name="rating" min="1" max="5" value="{{ item['rating'] or '' }}" />
+                    </label>
+                    <label class="field">
+                      <span>Дата отзыва</span>
+                      <input type="text" name="feedback_created_at" value="{{ item['feedback_created_at'] or '' }}" />
+                    </label>
+                  </div>
+                  <label class="field">
+                    <span>Текст клиента</span>
+                    <textarea name="text" rows="2">{{ item['text'] or '' }}</textarea>
+                  </label>
+                  <div class="feedback-row">
+                    <label class="field">
+                      <span>Плюсы</span>
+                      <input type="text" name="pros" value="{{ item['pros'] or '' }}" />
+                    </label>
+                    <label class="field">
+                      <span>Минусы</span>
+                      <input type="text" name="cons" value="{{ item['cons'] or '' }}" />
+                    </label>
+                  </div>
+                  <label class="field">
+                    <span>Текст ответа</span>
+                    <textarea name="answer_text" rows="2" required>{{ item['answer_text'] or '' }}</textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button class="btn ghost" type="submit">Обновить</button>
+                  </div>
+                </form>
+                <form method="post" action="{{ url_for('remove_example', example_id=item['id']) }}">
+                  <button class="btn danger" type="submit">Удалить</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <h3>Примеров пока нет</h3>
+            <p>Добавьте несколько примеров, чтобы задать стиль ИИ.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

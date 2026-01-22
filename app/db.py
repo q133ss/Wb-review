@@ -42,9 +42,20 @@ def init_db(conn: sqlite3.Connection) -> None:
             ai_model TEXT,
             ai_prompt TEXT,
             ai_created_at TEXT,
+            draft_response TEXT,
+            sent_response TEXT,
+            sent_at TEXT,
+            sent_raw TEXT,
             last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (marketplace_id, external_id),
             FOREIGN KEY (marketplace_id) REFERENCES marketplaces(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS ai_examples (
@@ -62,7 +73,25 @@ def init_db(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    _ensure_feedback_columns(conn)
     conn.commit()
+
+
+def _ensure_feedback_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        "draft_response": "TEXT",
+        "sent_response": "TEXT",
+        "sent_at": "TEXT",
+        "sent_raw": "TEXT",
+    }
+    existing = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(feedbacks)").fetchall()
+    }
+    for name, ddl in columns.items():
+        if name in existing:
+            continue
+        conn.execute(f"ALTER TABLE feedbacks ADD COLUMN {name} {ddl}")
 
 
 def get_or_create_marketplace(conn: sqlite3.Connection, code: str, name: str) -> int:
@@ -186,6 +215,128 @@ def get_new_feedbacks(conn: sqlite3.Connection, marketplace_id: int) -> list[sql
         (marketplace_id,),
     ).fetchall()
     return list(rows)
+
+
+def get_feedback(conn: sqlite3.Connection, feedback_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM feedbacks WHERE id = ?",
+        (feedback_id,),
+    ).fetchone()
+
+
+def list_pending_feedbacks(conn: sqlite3.Connection, limit: int = 200) -> list[sqlite3.Row]:
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM feedbacks
+        WHERE status != 'sent'
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return list(rows)
+
+
+def list_sent_feedbacks(conn: sqlite3.Connection, limit: int = 200) -> list[sqlite3.Row]:
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM feedbacks
+        WHERE status = 'sent'
+        ORDER BY sent_at DESC, id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return list(rows)
+
+
+def update_draft_response(conn: sqlite3.Connection, feedback_id: int, text: str) -> None:
+    conn.execute(
+        """
+        UPDATE feedbacks
+        SET draft_response = ?
+        WHERE id = ?
+        """,
+        (text, feedback_id),
+    )
+    conn.commit()
+
+
+def mark_sent(
+    conn: sqlite3.Connection,
+    feedback_id: int,
+    response_text: str,
+    raw_payload: dict[str, Any] | None = None,
+) -> None:
+    payload = json.dumps(raw_payload or {}, ensure_ascii=False)
+    conn.execute(
+        """
+        UPDATE feedbacks
+        SET status = 'sent',
+            sent_response = ?,
+            sent_raw = ?,
+            sent_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (response_text, payload, feedback_id),
+    )
+    conn.commit()
+
+
+def has_admin_users(conn: sqlite3.Connection) -> bool:
+    row = conn.execute("SELECT 1 FROM admin_users LIMIT 1").fetchone()
+    return row is not None
+
+
+def create_admin_user(conn: sqlite3.Connection, username: str, password_hash: str) -> int:
+    cur = conn.execute(
+        "INSERT INTO admin_users (username, password_hash) VALUES (?, ?)",
+        (username, password_hash),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def get_admin_user_by_username(conn: sqlite3.Connection, username: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM admin_users WHERE username = ?",
+        (username,),
+    ).fetchone()
+
+
+def get_admin_user_by_id(conn: sqlite3.Connection, user_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM admin_users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+
+
+def list_ai_examples(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM ai_examples
+        ORDER BY created_at DESC, id DESC
+        """,
+    ).fetchall()
+    return list(rows)
+
+
+def get_ai_example(conn: sqlite3.Connection, example_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM ai_examples WHERE id = ?",
+        (example_id,),
+    ).fetchone()
+
+
+def delete_ai_example(conn: sqlite3.Connection, example_id: int) -> None:
+    conn.execute(
+        "DELETE FROM ai_examples WHERE id = ?",
+        (example_id,),
+    )
+    conn.commit()
 
 
 def upsert_ai_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:

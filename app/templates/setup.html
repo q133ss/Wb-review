@@ -1,0 +1,16 @@
+{% extends "auth.html" %}
+{% block content %}
+  <h1 class="auth-title">Создать администратора</h1>
+  <p class="auth-subtitle">Первый запуск. Доступы сохраняются в базе данных.</p>
+  <form class="form" method="post">
+    <label class="field">
+      <span>Логин</span>
+      <input type="text" name="username" required />
+    </label>
+    <label class="field">
+      <span>Пароль</span>
+      <input type="password" name="password" required />
+    </label>
+    <button class="btn primary full" type="submit">Создать</button>
+  </form>
+{% endblock %}

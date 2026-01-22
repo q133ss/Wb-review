@@ -57,6 +57,25 @@ class WildberriesClient(MarketplaceClient):
             raise RuntimeError(f"WB API error payload: {payload}")
         return payload
 
+    def send_response(self, feedback_id: str, text: str) -> dict[str, Any]:
+        url = "https://feedbacks-api.wildberries.ru/api/v1/feedbacks"
+        headers = {
+            "Authorization": self.api_token,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        payload = {"id": feedback_id, "text": text}
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        if resp.status_code != 200:
+            raise RuntimeError(f"WB API error {resp.status_code}: {resp.text[:200]}")
+        try:
+            data = resp.json()
+        except Exception as exc:
+            raise RuntimeError(f"WB API invalid JSON: {exc}") from exc
+        if data.get("error"):
+            raise RuntimeError(f"WB API error payload: {data}")
+        return data
+
     def _normalize(self, item: dict[str, Any]) -> FeedbackItem:
         product_name = ""
         product = item.get("productDetails") or {}
