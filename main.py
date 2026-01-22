@@ -7,6 +7,7 @@ from app.db import (
     connect,
     get_new_feedbacks,
     get_or_create_marketplace,
+    get_ai_examples,
     get_setting,
     init_db,
     insert_or_touch_feedback,
@@ -71,7 +72,12 @@ def process_ai(conn, settings, marketplace_id: int) -> None:
             "product_name": row["product_name"] or "",
             "marketplace": "WB",
         }
-        prompt = build_prompt(prompt_template, payload)
+        examples = get_ai_examples(
+            conn,
+            row["product_name"] or "",
+            row["rating"],
+        )
+        prompt = build_prompt(prompt_template, payload, examples)
         answer = generate_response(
             api_key=settings.openai_api_key,
             model=settings.openai_model,

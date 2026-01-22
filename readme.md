@@ -29,6 +29,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
 # заполните OPENAI_API_KEY и WB_API_TOKEN в .env
+python -m app.seed
 python main.py
 ```
 

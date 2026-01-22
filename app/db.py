@@ -46,6 +46,20 @@ def init_db(conn: sqlite3.Connection) -> None:
             UNIQUE (marketplace_id, external_id),
             FOREIGN KEY (marketplace_id) REFERENCES marketplaces(id)
         );
+
+        CREATE TABLE IF NOT EXISTS ai_examples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            external_id TEXT NOT NULL UNIQUE,
+            feedback_created_at TEXT,
+            rating INTEGER,
+            user_name TEXT,
+            text TEXT,
+            pros TEXT,
+            cons TEXT,
+            product_name TEXT,
+            answer_text TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         """
     )
     conn.commit()
@@ -170,5 +184,67 @@ def get_new_feedbacks(conn: sqlite3.Connection, marketplace_id: int) -> list[sql
         ORDER BY created_at ASC
         """,
         (marketplace_id,),
+    ).fetchall()
+    return list(rows)
+
+
+def upsert_ai_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
+    conn.execute(
+        """
+        INSERT INTO ai_examples (
+            external_id,
+            feedback_created_at,
+            rating,
+            user_name,
+            text,
+            pros,
+            cons,
+            product_name,
+            answer_text
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(external_id) DO UPDATE SET
+            feedback_created_at = excluded.feedback_created_at,
+            rating = excluded.rating,
+            user_name = excluded.user_name,
+            text = excluded.text,
+            pros = excluded.pros,
+            cons = excluded.cons,
+            product_name = excluded.product_name,
+            answer_text = excluded.answer_text
+        """,
+        (
+            data["external_id"],
+            data.get("feedback_created_at"),
+            data.get("rating"),
+            data.get("user_name"),
+            data.get("text"),
+            data.get("pros"),
+            data.get("cons"),
+            data.get("product_name"),
+            data.get("answer_text"),
+        ),
+    )
+    conn.commit()
+
+
+def get_ai_examples(
+    conn: sqlite3.Connection,
+    product_name: str,
+    rating: int | None,
+    limit: int = 6,
+) -> list[sqlite3.Row]:
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM ai_examples
+        ORDER BY
+            CASE WHEN product_name = ? THEN 1 ELSE 0 END DESC,
+            CASE WHEN rating = ? THEN 1 ELSE 0 END DESC,
+            feedback_created_at DESC,
+            id DESC
+        LIMIT ?
+        """,
+        (product_name, rating, limit),
     ).fetchall()
     return list(rows)
