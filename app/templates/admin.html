@@ -288,6 +288,18 @@
                   <div class="value">{{ account["marketplace_name"] }}</div>
                 </div>
                 {% if account["is_active"] == 1 %}
+                  <form class="form" method="post" action="{{ url_for('toggle_auto_reply', account_id=account['id']) }}">
+                    <label class="field">
+                      <span>Автоответ</span>
+                      <select name="auto_reply_enabled">
+                        <option value="1" {{ "selected" if account["auto_reply_enabled"] == 1 else "" }}>Включен</option>
+                        <option value="0" {{ "selected" if account["auto_reply_enabled"] == 0 else "" }}>Выключен</option>
+                      </select>
+                    </label>
+                    <button class="btn ghost" type="submit">Сохранить</button>
+                  </form>
+                {% endif %}
+                {% if account["is_active"] == 1 %}
                   <form method="post" action="{{ url_for('delete_account', account_id=account['id']) }}">
                     <button class="btn danger" type="submit">Удалить</button>
                   </form>

@@ -28,6 +28,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             account_name TEXT NOT NULL,
             api_token TEXT NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 1,
+            auto_reply_enabled INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (marketplace_id) REFERENCES marketplaces(id)
         );
@@ -85,6 +86,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
     _ensure_feedback_columns(conn)
+    _ensure_marketplace_account_columns(conn)
     conn.commit()
 
 
@@ -103,6 +105,20 @@ def _ensure_feedback_columns(conn: sqlite3.Connection) -> None:
         if name in existing:
             continue
         conn.execute(f"ALTER TABLE feedbacks ADD COLUMN {name} {ddl}")
+
+
+def _ensure_marketplace_account_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        "auto_reply_enabled": "INTEGER NOT NULL DEFAULT 1",
+    }
+    existing = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(marketplace_accounts)").fetchall()
+    }
+    for name, ddl in columns.items():
+        if name in existing:
+            continue
+        conn.execute(f"ALTER TABLE marketplace_accounts ADD COLUMN {name} {ddl}")
 
 
 def get_or_create_marketplace(conn: sqlite3.Connection, code: str, name: str) -> int:
@@ -329,6 +345,18 @@ def deactivate_marketplace_account(conn: sqlite3.Connection, account_id: int) ->
     conn.execute(
         "UPDATE marketplace_accounts SET is_active = 0 WHERE id = ?",
         (account_id,),
+    )
+    conn.commit()
+
+
+def set_marketplace_account_auto_reply(
+    conn: sqlite3.Connection,
+    account_id: int,
+    enabled: bool,
+) -> None:
+    conn.execute(
+        "UPDATE marketplace_accounts SET auto_reply_enabled = ? WHERE id = ?",
+        (1 if enabled else 0, account_id),
     )
     conn.commit()
 

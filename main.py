@@ -65,7 +65,13 @@ def _reply_mode(rating: int | None) -> str:
     return "skip"
 
 
-def process_ai(conn, settings, marketplace_id: int, client: WildberriesClient) -> None:
+def process_ai(
+    conn,
+    settings,
+    marketplace_id: int,
+    client: WildberriesClient,
+    auto_reply_enabled: bool,
+) -> None:
     prompt_template = ensure_prompt(conn, settings.prompt_template)
     rows = get_new_feedbacks(conn, marketplace_id)
     for row in rows:
@@ -73,6 +79,8 @@ def process_ai(conn, settings, marketplace_id: int, client: WildberriesClient) -
         if mode == "skip":
             mark_skipped(conn, row["id"], "manual_needed")
             continue
+        if mode == "auto_send" and not auto_reply_enabled:
+            mode = "manual_confirm"
         if not settings.openai_api_key:
             mark_skipped(conn, row["id"], "ai_skipped_no_key")
             continue
@@ -120,7 +128,8 @@ def poll_wb(conn, settings, account_row) -> None:
         if raw_payload is not None:
             with open(_last_response_path(account_row), "w", encoding="utf-8") as f:
                 json.dump(raw_payload, f, ensure_ascii=False, indent=2)
-    process_ai(conn, settings, marketplace_id, client)
+    auto_reply_enabled = int(account_row.get("auto_reply_enabled", 1)) == 1
+    process_ai(conn, settings, marketplace_id, client, auto_reply_enabled)
 
 
 def _seed_wb_accounts(conn, accounts: tuple[WBAccount, ...]) -> None:

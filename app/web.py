@@ -37,6 +37,7 @@ from app.db import (
     list_pending_feedbacks,
     list_sent_feedbacks,
     mark_sent,
+    set_marketplace_account_auto_reply,
     update_draft_response,
     upsert_ai_example,
 )
@@ -290,6 +291,17 @@ def delete_account(account_id: int):
     conn = _get_db()
     deactivate_marketplace_account(conn, account_id)
     flash("Аккаунт удален.", "success")
+    return redirect(url_for("admin", tab="accounts"))
+
+
+@app.route("/admin/accounts/<int:account_id>/auto-reply", methods=["POST"])
+@login_required
+def toggle_auto_reply(account_id: int):
+    conn = _get_db()
+    value = (request.form.get("auto_reply_enabled") or "").strip()
+    enabled = value == "1"
+    set_marketplace_account_auto_reply(conn, account_id, enabled)
+    flash("Настройки автоответа обновлены.", "success")
     return redirect(url_for("admin", tab="accounts"))
 
 
