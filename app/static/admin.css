@@ -119,6 +119,63 @@ body {
   box-shadow: var(--glow);
 }
 
+.account-switch {
+  display: grid;
+  gap: 10px;
+}
+
+.account-group {
+  border-radius: 16px;
+  border: 1px solid rgba(120, 130, 180, 0.2);
+  background: rgba(10, 12, 26, 0.45);
+  padding: 6px 10px;
+}
+
+.account-group-trigger {
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px;
+}
+
+.account-group-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.account-items {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+.account-link {
+  text-decoration: none;
+  color: var(--muted);
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 130, 180, 0.16);
+  background: rgba(10, 12, 26, 0.6);
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.account-link:hover {
+  color: #fff;
+  border-color: rgba(124, 132, 180, 0.25);
+  background: rgba(88, 96, 150, 0.12);
+}
+
+.account-link.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 159, 104, 0.25), rgba(108, 99, 255, 0.25));
+  border-color: rgba(255, 159, 104, 0.4);
+  box-shadow: var(--glow);
+}
+
 .logout {
   margin-top: auto;
 }
@@ -305,6 +362,15 @@ body {
   resize: vertical;
 }
 
+.field select {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(132, 142, 190, 0.3);
+  background: rgba(10, 12, 26, 0.8);
+  color: #f5f6ff;
+}
+
 .field input:focus,
 .field textarea:focus {
   outline: none;
@@ -450,6 +516,12 @@ body {
   .nav {
     flex-direction: row;
     flex-wrap: wrap;
+  }
+
+  .account-items {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
   }
 
   .logout {

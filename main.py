@@ -1,18 +1,20 @@
 import json
 import time
+import uuid
 
 from app.ai import build_prompt, generate_response
-from app.config import get_settings
+from app.config import WBAccount, get_settings
 from app.db import (
     connect,
     get_new_feedbacks,
-    get_or_create_marketplace,
     get_ai_examples,
     get_setting,
     init_db,
     insert_or_touch_feedback,
+    list_marketplace_accounts,
     mark_sent,
     mark_skipped,
+    create_marketplace_account,
     set_setting,
     update_ai_response,
 )
@@ -102,31 +104,58 @@ def process_ai(conn, settings, marketplace_id: int, client: WildberriesClient) -
                 print(f"Auto-send error for feedback {row['external_id']}: {exc}")
 
 
-def poll_wb(conn, settings) -> None:
-    if not settings.wb_api_token:
-        print("WB API token is not set. Set WB_API_TOKEN in .env or environment.")
-        return
-    client = WildberriesClient(settings.wb_api_token)
-    marketplace_id = get_or_create_marketplace(conn, client.code, client.name)
-    print("WB poll: fetching unanswered feedbacks...")
+def _last_response_path(account_row) -> str:
+    account_key = str(account_row["id"])
+    return f"wb_feedbacks_last_response_{account_key}.json"
+
+
+def poll_wb(conn, settings, account_row) -> None:
+    client = WildberriesClient(account_row["api_token"])
+    marketplace_id = int(account_row["marketplace_id"])
+    print(f"WB poll ({account_row['account_name']}): fetching unanswered feedbacks...")
     items, raw_payload = client.fetch_unanswered_with_raw()
-    print(f"WB poll: received {len(items)} feedback(s).")
+    print(f"WB poll ({account_row['account_name']}): received {len(items)} feedback(s).")
     if items:
         upsert_feedbacks(conn, marketplace_id, items)
         if raw_payload is not None:
-            with open("wb_feedbacks_last_response.json", "w", encoding="utf-8") as f:
+            with open(_last_response_path(account_row), "w", encoding="utf-8") as f:
                 json.dump(raw_payload, f, ensure_ascii=False, indent=2)
     process_ai(conn, settings, marketplace_id, client)
+
+
+def _seed_wb_accounts(conn, accounts: tuple[WBAccount, ...]) -> None:
+    if not accounts:
+        return
+    existing = list_marketplace_accounts(conn, marketplace_type="wb", active_only=False)
+    if existing:
+        return
+    for account in accounts:
+        account_name = account.key if account.key != "default" else "Основной"
+        marketplace_code = f"wb:{uuid.uuid4().hex[:8]}"
+        marketplace_name = f"Wildberries — {account_name}"
+        create_marketplace_account(
+            conn,
+            marketplace_type="wb",
+            account_name=account_name,
+            api_token=account.token,
+            marketplace_code=marketplace_code,
+            marketplace_name=marketplace_name,
+        )
 
 
 def main() -> None:
     settings = get_settings()
     conn = connect(settings.db_path)
     init_db(conn)
+    _seed_wb_accounts(conn, settings.wb_accounts)
     print("Polling started. Press Ctrl+C to stop.")
     while True:
         try:
-            poll_wb(conn, settings)
+            accounts = list_marketplace_accounts(conn, marketplace_type="wb", active_only=True)
+            if not accounts:
+                print("WB accounts are not configured. Add them in the admin panel.")
+            for account_row in accounts:
+                poll_wb(conn, settings, account_row)
         except Exception as exc:
             print(f"Polling error: {exc}")
         time.sleep(settings.poll_interval_sec)

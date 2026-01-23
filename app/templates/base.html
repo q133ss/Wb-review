@@ -17,10 +17,27 @@
           </div>
         </div>
         <nav class="nav">
-          <a class="nav-link {{ 'active' if tab == 'inbox' else '' }}" href="{{ url_for('admin', tab='inbox') }}">Входящие</a>
-          <a class="nav-link {{ 'active' if tab == 'sent' else '' }}" href="{{ url_for('admin', tab='sent') }}">Отправленные</a>
-          <a class="nav-link {{ 'active' if tab == 'examples' else '' }}" href="{{ url_for('admin', tab='examples') }}">Примеры ИИ</a>
+          <a class="nav-link {{ 'active' if tab == 'inbox' else '' }}" href="{{ url_for('admin', tab='inbox', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='inbox') }}">Входящие</a>
+          <a class="nav-link {{ 'active' if tab == 'sent' else '' }}" href="{{ url_for('admin', tab='sent', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='sent') }}">Отправленные</a>
+          <a class="nav-link {{ 'active' if tab == 'examples' else '' }}" href="{{ url_for('admin', tab='examples', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='examples') }}">Примеры ИИ</a>
+          <a class="nav-link {{ 'active' if tab == 'accounts' else '' }}" href="{{ url_for('admin', tab='accounts') }}">Аккаунты</a>
         </nav>
+        {% if accounts_by_type %}
+          <div class="account-switch">
+            <div class="label">Аккаунты</div>
+            <a class="account-link {{ 'active' if not selected_marketplace_id else '' }}" href="{{ url_for('admin', tab=tab) }}">Все аккаунты</a>
+            {% for group in accounts_by_type %}
+              <details class="account-group">
+                <summary class="account-group-trigger">{{ group["label"] }}</summary>
+                <div class="account-items">
+                  {% for account in group["accounts"] %}
+                    <a class="account-link {{ 'active' if selected_marketplace_id == account['marketplace_id'] else '' }}" href="{{ url_for('admin', tab=tab, marketplace_id=account['marketplace_id']) }}">{{ account["account_name"] }}</a>
+                  {% endfor %}
+                </div>
+              </details>
+            {% endfor %}
+          </div>
+        {% endif %}
         <form class="logout" method="post" action="{{ url_for('logout') }}">
           <button class="btn ghost" type="submit">Выйти</button>
         </form>

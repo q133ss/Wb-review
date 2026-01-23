@@ -21,6 +21,17 @@ def init_db(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS marketplace_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            marketplace_id INTEGER NOT NULL UNIQUE,
+            marketplace_type TEXT NOT NULL,
+            account_name TEXT NOT NULL,
+            api_token TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (marketplace_id) REFERENCES marketplaces(id)
+        );
+
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -224,30 +235,150 @@ def get_feedback(conn: sqlite3.Connection, feedback_id: int) -> sqlite3.Row | No
     ).fetchone()
 
 
-def list_pending_feedbacks(conn: sqlite3.Connection, limit: int = 200) -> list[sqlite3.Row]:
+def get_marketplace(conn: sqlite3.Connection, marketplace_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM marketplaces WHERE id = ?",
+        (marketplace_id,),
+    ).fetchone()
+
+
+def list_marketplaces(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     rows = conn.execute(
         """
         SELECT *
-        FROM feedbacks
-        WHERE status != 'sent'
-        ORDER BY created_at DESC, id DESC
-        LIMIT ?
+        FROM marketplaces
+        ORDER BY name ASC, id ASC
         """,
-        (limit,),
     ).fetchall()
     return list(rows)
 
 
-def list_sent_feedbacks(conn: sqlite3.Connection, limit: int = 200) -> list[sqlite3.Row]:
+def list_marketplace_accounts(
+    conn: sqlite3.Connection,
+    marketplace_type: str | None = None,
+    active_only: bool = True,
+) -> list[sqlite3.Row]:
+    where = []
+    params: list[Any] = []
+    if active_only:
+        where.append("a.is_active = 1")
+    if marketplace_type:
+        where.append("a.marketplace_type = ?")
+        params.append(marketplace_type)
+    where_sql = ""
+    if where:
+        where_sql = "WHERE " + " AND ".join(where)
     rows = conn.execute(
+        f"""
+        SELECT a.*, m.name AS marketplace_name, m.code AS marketplace_code
+        FROM marketplace_accounts AS a
+        JOIN marketplaces AS m ON m.id = a.marketplace_id
+        {where_sql}
+        ORDER BY a.marketplace_type ASC, a.account_name ASC, a.id ASC
+        """,
+        params,
+    ).fetchall()
+    return list(rows)
+
+
+def get_marketplace_account_by_marketplace_id(
+    conn: sqlite3.Connection,
+    marketplace_id: int,
+) -> sqlite3.Row | None:
+    return conn.execute(
         """
-        SELECT *
-        FROM feedbacks
-        WHERE status = 'sent'
-        ORDER BY sent_at DESC, id DESC
+        SELECT a.*, m.name AS marketplace_name, m.code AS marketplace_code
+        FROM marketplace_accounts AS a
+        JOIN marketplaces AS m ON m.id = a.marketplace_id
+        WHERE a.marketplace_id = ?
+        """,
+        (marketplace_id,),
+    ).fetchone()
+
+
+def create_marketplace_account(
+    conn: sqlite3.Connection,
+    marketplace_type: str,
+    account_name: str,
+    api_token: str,
+    marketplace_code: str,
+    marketplace_name: str,
+) -> int:
+    cur = conn.execute(
+        "INSERT INTO marketplaces (code, name) VALUES (?, ?)",
+        (marketplace_code, marketplace_name),
+    )
+    marketplace_id = int(cur.lastrowid)
+    cur = conn.execute(
+        """
+        INSERT INTO marketplace_accounts (
+            marketplace_id,
+            marketplace_type,
+            account_name,
+            api_token
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (marketplace_id, marketplace_type, account_name, api_token),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def deactivate_marketplace_account(conn: sqlite3.Connection, account_id: int) -> None:
+    conn.execute(
+        "UPDATE marketplace_accounts SET is_active = 0 WHERE id = ?",
+        (account_id,),
+    )
+    conn.commit()
+
+
+def list_pending_feedbacks(
+    conn: sqlite3.Connection,
+    marketplace_id: int | None = None,
+    limit: int = 200,
+) -> list[sqlite3.Row]:
+    where = "WHERE f.status != 'sent'"
+    params: list[Any] = []
+    if marketplace_id is not None:
+        where += " AND f.marketplace_id = ?"
+        params.append(marketplace_id)
+    params.append(limit)
+    rows = conn.execute(
+        f"""
+        SELECT f.*, m.name AS marketplace_name, m.code AS marketplace_code
+        FROM feedbacks AS f
+        JOIN marketplaces AS m ON m.id = f.marketplace_id
+        {where}
+        ORDER BY f.created_at DESC, f.id DESC
         LIMIT ?
         """,
-        (limit,),
+        params,
+    ).fetchall()
+    return list(rows)
+
+
+def list_sent_feedbacks(
+    conn: sqlite3.Connection,
+    marketplace_id: int | None = None,
+    limit: int = 200,
+) -> list[sqlite3.Row]:
+    where = "WHERE f.status = 'sent'"
+    params: list[Any] = []
+    if marketplace_id is not None:
+        where += " AND f.marketplace_id = ?"
+        params.append(marketplace_id)
+    params.append(limit)
+    rows = conn.execute(
+        f"""
+        SELECT f.*, m.name AS marketplace_name, m.code AS marketplace_code
+        FROM feedbacks AS f
+        JOIN marketplaces AS m ON m.id = f.marketplace_id
+        {where}
+        ORDER BY f.sent_at DESC, f.id DESC
+        LIMIT ?
+        """,
+        params,
     ).fetchall()
     return list(rows)
 

@@ -28,7 +28,7 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
-# заполните OPENAI_API_KEY и WB_API_TOKEN в .env
+# заполните OPENAI_API_KEY и WB_API_TOKEN (или WB_ACCOUNTS) в .env
 python -m app.seed
 python main.py
 ```
@@ -36,7 +36,8 @@ python main.py
 ## Конфигурация (.env)
 - `OPENAI_API_KEY` — ключ OpenAI.
 - `OPENAI_MODEL` — модель (по умолчанию `gpt-4o-mini`).
-- `WB_API_TOKEN` — токен WB.
+- `WB_API_TOKEN` — токен WB (используется только для первичного заполнения БД).
+- `WB_ACCOUNTS` — список аккаунтов WB в формате `name:token,name2:token2` (используется только для первичного заполнения БД).
 - `DB_PATH` — путь к SQLite (по умолчанию `app.db`).
 - `POLL_INTERVAL_SEC` — интервал опроса (по умолчанию 60).
 - `PROMPT_TEMPLATE` — шаблон промпта (можно менять без правки кода).

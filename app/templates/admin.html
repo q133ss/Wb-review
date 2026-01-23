@@ -2,18 +2,32 @@
 {% block content %}
   <section class="hero">
     <div>
-      <h1>{{ "Входящие" if tab == "inbox" else ("Отправленные" if tab == "sent" else "Примеры ИИ") }}</h1>
+      <h1>
+        {{
+          "Входящие" if tab == "inbox" else
+          ("Отправленные" if tab == "sent" else
+          ("Аккаунты" if tab == "accounts" else "Примеры ИИ"))
+        }}
+      </h1>
       <p class="muted">
         {% if tab == "inbox" %}
           Просматривайте новые отзывы, редактируйте ответы ИИ и отправляйте их в WB.
         {% elif tab == "sent" %}
           История отзывов, уже отправленных в WB.
+        {% elif tab == "accounts" %}
+          Управляйте аккаунтами маркетплейсов для автоматических ответов.
         {% else %}
           Настройка примеров, используемых в промптах для ИИ.
         {% endif %}
       </p>
     </div>
-    
+    <div class="hero-meta">
+      {% if selected_account %}
+        <div class="chip">Аккаунт: {{ selected_account["account_name"] }}</div>
+      {% else %}
+        <div class="chip">Все аккаунты</div>
+      {% endif %}
+    </div>
   </section>
 
   {% if tab == "inbox" %}
@@ -25,7 +39,7 @@
               <div>
                 <div class="card-title">{{ item["product_name"] or "Товар не указан" }}</div>
                 <div class="card-subtitle">
-                  {{ (item["created_at"] | format_dt) or "Дата не указана" }} · Оценка {{ item["rating"] or "-" }}
+                  {{ (item["created_at"] | format_dt) or "Дата не указана" }} · {{ item["marketplace_name"] or "WB" }} · Оценка {{ item["rating"] or "-" }}
                 </div>
               </div>
               {% set status = item["status"] %}
@@ -55,6 +69,7 @@
                 </div>
               </div>
               <form class="form" method="post">
+                <input type="hidden" name="marketplace_id" value="{{ selected_marketplace_id or '' }}" />
                 <label class="field">
                   <span>Черновик ответа</span>
                   <textarea name="response_text" rows="4">{{ item["draft_response"] or item["ai_response"] or "" }}</textarea>
@@ -83,7 +98,7 @@
               <div>
                 <div class="card-title">{{ item["product_name"] or "Товар не указан" }}</div>
                 <div class="card-subtitle">
-                  Отправлено {{ (item["sent_at"] | format_dt) or "Время не указано" }} · Оценка {{ item["rating"] or "-" }}
+                  Отправлено {{ (item["sent_at"] | format_dt) or "Время не указано" }} · {{ item["marketplace_name"] or "WB" }} · Оценка {{ item["rating"] or "-" }}
                 </div>
               </div>
               <div class="badge sent">отправлено</div>
@@ -107,7 +122,7 @@
         </div>
       {% endif %}
     </section>
-  {% else %}
+  {% elif tab == "examples" %}
     <section class="split">
       <div class="card">
         <div class="card-header">
@@ -221,6 +236,69 @@
           <div class="empty-state">
             <h3>Примеров пока нет</h3>
             <p>Добавьте несколько примеров, чтобы задать стиль ИИ.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  {% elif tab == "accounts" %}
+    <section class="split">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Добавить аккаунт</div>
+            <div class="card-subtitle">Укажите маркетплейс, имя и токен.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form class="form" method="post" action="{{ url_for('create_account') }}">
+            <label class="field">
+              <span>Маркетплейс</span>
+              <select name="marketplace_type" required>
+                <option value="wb">Wildberries</option>
+                <option value="ozon">Ozon</option>
+                <option value="ym">Яндекс Маркет</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Название аккаунта</span>
+              <input type="text" name="account_name" placeholder="Например: Основной" required />
+            </label>
+            <label class="field">
+              <span>API токен</span>
+              <textarea name="api_token" rows="3" required></textarea>
+            </label>
+            <button class="btn primary" type="submit">Сохранить аккаунт</button>
+          </form>
+        </div>
+      </div>
+      <div class="stack">
+        {% if accounts %}
+          {% for account in accounts %}
+            <div class="card" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">{{ marketplace_labels.get(account["marketplace_type"], account["marketplace_type"]) }} · {{ account["account_name"] }}</div>
+                  <div class="card-subtitle">Статус: {{ "активен" if account["is_active"] == 1 else "удален" }}</div>
+                </div>
+                <div class="badge neutral">{{ account["marketplace_type"] }}</div>
+              </div>
+              <div class="card-body">
+                <div class="feedback-block">
+                  <div class="label">Маркетплейс</div>
+                  <div class="value">{{ account["marketplace_name"] }}</div>
+                </div>
+                {% if account["is_active"] == 1 %}
+                  <form method="post" action="{{ url_for('delete_account', account_id=account['id']) }}">
+                    <button class="btn danger" type="submit">Удалить</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <h3>Аккаунтов пока нет</h3>
+            <p>Добавьте аккаунты, чтобы начать получать отзывы.</p>
           </div>
         {% endif %}
       </div>
