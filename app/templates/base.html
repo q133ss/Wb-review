@@ -19,7 +19,8 @@
         <nav class="nav">
           <a class="nav-link {{ 'active' if tab == 'inbox' else '' }}" href="{{ url_for('admin', tab='inbox', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='inbox') }}">Входящие</a>
           <a class="nav-link {{ 'active' if tab == 'sent' else '' }}" href="{{ url_for('admin', tab='sent', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='sent') }}">Отправленные</a>
-          <a class="nav-link {{ 'active' if tab == 'examples' else '' }}" href="{{ url_for('admin', tab='examples', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='examples') }}">Примеры ИИ</a>
+          <a class="nav-link {{ 'active' if tab == 'examples' else '' }}" href="{{ url_for('admin', tab='examples', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='examples') }}">RAG примеры</a>
+          <a class="nav-link {{ 'active' if tab == 'products' else '' }}" href="{{ url_for('admin', tab='products', marketplace_id=selected_marketplace_id) if selected_marketplace_id else url_for('admin', tab='products') }}">Товары WB</a>
           <a class="nav-link {{ 'active' if tab == 'accounts' else '' }}" href="{{ url_for('admin', tab='accounts') }}">Аккаунты</a>
         </nav>
         {% if accounts_by_type %}

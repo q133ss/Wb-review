@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from datetime import datetime
@@ -24,22 +25,25 @@ from app.db import (
     create_admin_user,
     create_marketplace_account,
     deactivate_marketplace_account,
-    delete_ai_example,
+    delete_rag_example,
     get_admin_user_by_id,
     get_admin_user_by_username,
-    get_ai_example,
+    get_product_by_marketplace_external_id,
+    get_rag_example,
     get_feedback,
     get_marketplace_account_by_marketplace_id,
     has_admin_users,
     init_db,
-    list_ai_examples,
+    list_products,
+    list_rag_examples,
     list_marketplace_accounts,
     list_pending_feedbacks,
     list_sent_feedbacks,
     mark_sent,
     set_marketplace_account_auto_reply,
     update_draft_response,
-    upsert_ai_example,
+    upsert_product,
+    upsert_rag_example,
 )
 from app.marketplaces.wb import WildberriesClient
 
@@ -192,9 +196,14 @@ def admin():
     if tab == "sent":
         context["feedbacks"] = list_sent_feedbacks(conn, selected_marketplace_id)
     elif tab == "examples":
-        context["examples"] = list_ai_examples(conn)
+        products = list_products(conn, selected_marketplace_id)
+        context["examples"] = list_rag_examples(conn)
+        context["products"] = products
+        context["products_payload"] = _serialize_products_for_form(products)
     elif tab == "accounts":
         context["accounts"] = accounts
+    elif tab == "products":
+        context["products"] = list_products(conn, selected_marketplace_id)
     else:
         context["feedbacks"] = list_pending_feedbacks(conn, selected_marketplace_id)
     return render_template("admin.html", **context)
@@ -305,6 +314,47 @@ def toggle_auto_reply(account_id: int):
     return redirect(url_for("admin", tab="accounts"))
 
 
+@app.route("/admin/products/refresh", methods=["POST"])
+@login_required
+def refresh_products():
+    conn = _get_db()
+    marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
+    if marketplace_id is None:
+        flash("Выберите аккаунт, чтобы обновить товары.", "error")
+        return redirect(url_for("admin", tab="products"))
+    account = get_marketplace_account_by_marketplace_id(conn, marketplace_id)
+    if not account:
+        flash("Аккаунт маркетплейса не найден.", "error")
+        return redirect(_admin_url("products", marketplace_id))
+    if account["marketplace_type"] != "wb":
+        flash("Обновление товаров доступно только для Wildberries.", "error")
+        return redirect(_admin_url("products", marketplace_id))
+    client = WildberriesClient(account["api_token"])
+    try:
+        items = client.fetch_products()
+    except Exception as exc:
+        flash(f"Ошибка обновления товаров: {exc}", "error")
+        return redirect(_admin_url("products", marketplace_id))
+    updated = 0
+    for item in items:
+        upsert_product(
+            conn,
+            marketplace_id,
+            {
+                "external_id": item.external_id,
+                "vendor_code": item.vendor_code,
+                "name": item.name,
+                "description": item.description,
+                "brand": item.brand,
+                "characteristics": item.characteristics,
+                "raw_json": item.raw_json,
+            },
+        )
+        updated += 1
+    flash(f"Обновлено товаров: {updated}.", "success")
+    return redirect(_admin_url("products", marketplace_id))
+
+
 @app.route("/admin/examples/new", methods=["POST"])
 @login_required
 def create_example():
@@ -312,6 +362,8 @@ def create_example():
     external_id = (request.form.get("external_id") or "").strip()
     if not external_id:
         external_id = f"manual-{uuid.uuid4().hex}"
+    marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
+    product_external_id = (request.form.get("product_external_id") or "").strip()
     data = {
         "external_id": external_id,
         "feedback_created_at": (request.form.get("feedback_created_at") or "").strip(),
@@ -321,12 +373,15 @@ def create_example():
         "pros": (request.form.get("pros") or "").strip(),
         "cons": (request.form.get("cons") or "").strip(),
         "product_name": (request.form.get("product_name") or "").strip(),
+        "product_description": (request.form.get("product_description") or "").strip(),
+        "product_benefits": (request.form.get("product_benefits") or "").strip(),
         "answer_text": (request.form.get("answer_text") or "").strip(),
     }
+    _apply_product_defaults(conn, marketplace_id, product_external_id, data)
     if not data["answer_text"]:
         flash("Для примера нужен текст ответа.", "error")
         return redirect(url_for("admin", tab="examples"))
-    upsert_ai_example(conn, data)
+    upsert_rag_example(conn, data)
     flash("Пример сохранен.", "success")
     return redirect(url_for("admin", tab="examples"))
 
@@ -335,10 +390,12 @@ def create_example():
 @login_required
 def update_example(example_id: int):
     conn = _get_db()
-    existing = get_ai_example(conn, example_id)
+    existing = get_rag_example(conn, example_id)
     if not existing:
         flash("Пример не найден.", "error")
         return redirect(url_for("admin", tab="examples"))
+    marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
+    product_external_id = (request.form.get("product_external_id") or "").strip()
     data = {
         "external_id": existing["external_id"],
         "feedback_created_at": (request.form.get("feedback_created_at") or "").strip(),
@@ -348,12 +405,15 @@ def update_example(example_id: int):
         "pros": (request.form.get("pros") or "").strip(),
         "cons": (request.form.get("cons") or "").strip(),
         "product_name": (request.form.get("product_name") or "").strip(),
+        "product_description": (request.form.get("product_description") or "").strip(),
+        "product_benefits": (request.form.get("product_benefits") or "").strip(),
         "answer_text": (request.form.get("answer_text") or "").strip(),
     }
+    _apply_product_defaults(conn, marketplace_id, product_external_id, data)
     if not data["answer_text"]:
         flash("Для примера нужен текст ответа.", "error")
         return redirect(url_for("admin", tab="examples"))
-    upsert_ai_example(conn, data)
+    upsert_rag_example(conn, data)
     flash("Пример обновлен.", "success")
     return redirect(url_for("admin", tab="examples"))
 
@@ -362,7 +422,7 @@ def update_example(example_id: int):
 @login_required
 def remove_example(example_id: int):
     conn = _get_db()
-    delete_ai_example(conn, example_id)
+    delete_rag_example(conn, example_id)
     flash("Пример удален.", "success")
     return redirect(url_for("admin", tab="examples"))
 
@@ -389,6 +449,63 @@ def _parse_marketplace_id(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _apply_product_defaults(conn, marketplace_id, product_external_id: str, data: dict) -> None:
+    if marketplace_id is None or not product_external_id:
+        return
+    product = get_product_by_marketplace_external_id(
+        conn,
+        marketplace_id,
+        product_external_id,
+    )
+    if product is None:
+        return
+    if not data.get("product_name"):
+        data["product_name"] = product["name"] or ""
+    if not data.get("product_description"):
+        data["product_description"] = product["description"] or ""
+    if not data.get("product_benefits"):
+        data["product_benefits"] = _format_characteristics(product["characteristics"])
+
+
+def _format_characteristics(raw_value: str | None) -> str:
+    if not raw_value:
+        return ""
+    try:
+        items = json.loads(raw_value)
+    except (TypeError, ValueError):
+        return ""
+    lines = []
+    for item in items:
+        name = str(item.get("name") or "").strip()
+        value = item.get("value")
+        if isinstance(value, list):
+            value = ", ".join(str(part) for part in value if part is not None)
+        value = str(value or "").strip()
+        if not name and not value:
+            continue
+        if name and value:
+            lines.append(f"{name}: {value}")
+        elif name:
+            lines.append(name)
+        else:
+            lines.append(value)
+    return "\n".join(lines)
+
+
+def _serialize_products_for_form(products: list) -> list[dict]:
+    payload = []
+    for product in products:
+        payload.append(
+            {
+                "external_id": str(product["external_id"] or ""),
+                "name": product["name"] or "",
+                "description": product["description"] or "",
+                "benefits": _format_characteristics(product["characteristics"]),
+            }
+        )
+    return payload
 
 
 def _group_accounts_by_type(accounts: list) -> list[dict]:

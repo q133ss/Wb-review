@@ -7,7 +7,9 @@ from app.config import WBAccount, get_settings
 from app.db import (
     connect,
     get_new_feedbacks,
-    get_ai_examples,
+    get_product_by_marketplace_external_id,
+    get_product_by_marketplace_name,
+    get_rag_examples,
     get_setting,
     init_db,
     insert_or_touch_feedback,
@@ -43,6 +45,7 @@ def upsert_feedbacks(conn, marketplace_id: int, items):
                 "pros": item.pros,
                 "cons": item.cons,
                 "product_name": item.product_name,
+                "product_nm_id": item.product_nm_id,
                 "status": "new",
                 "raw_json": item.raw_json,
             },
@@ -84,15 +87,24 @@ def process_ai(
         if not settings.openai_api_key:
             mark_skipped(conn, row["id"], "ai_skipped_no_key")
             continue
+        product_row = _get_product_context(
+            conn,
+            marketplace_id,
+            row["product_nm_id"],
+            row["product_name"],
+        )
         payload = {
             "text": row["text"] or "",
             "rating": row["rating"] or "",
             "pros": row["pros"] or "",
             "cons": row["cons"] or "",
             "product_name": row["product_name"] or "",
+            "product_title": (product_row or {}).get("name") or "",
+            "product_description": (product_row or {}).get("description") or "",
+            "product_benefits": _format_product_benefits(product_row),
             "marketplace": "WB",
         }
-        examples = get_ai_examples(
+        examples = get_rag_examples(
             conn,
             row["product_name"] or "",
             row["rating"],
@@ -150,6 +162,45 @@ def _seed_wb_accounts(conn, accounts: tuple[WBAccount, ...]) -> None:
             marketplace_code=marketplace_code,
             marketplace_name=marketplace_name,
         )
+
+
+def _get_product_context(conn, marketplace_id: int, product_nm_id, product_name):
+    product_row = get_product_by_marketplace_external_id(
+        conn,
+        marketplace_id,
+        product_nm_id,
+    )
+    if product_row is not None:
+        return product_row
+    return get_product_by_marketplace_name(conn, marketplace_id, product_name)
+
+
+def _format_product_benefits(product_row) -> str:
+    if not product_row:
+        return ""
+    raw = product_row["characteristics"]
+    if not raw:
+        return ""
+    try:
+        items = json.loads(raw)
+    except (TypeError, ValueError):
+        return ""
+    lines = []
+    for item in items:
+        name = str(item.get("name") or "").strip()
+        value = item.get("value")
+        if isinstance(value, list):
+            value = ", ".join(str(part) for part in value if part is not None)
+        value = str(value or "").strip()
+        if not name and not value:
+            continue
+        if name and value:
+            lines.append(f"{name}: {value}")
+        elif name:
+            lines.append(name)
+        else:
+            lines.append(value)
+    return "\n".join(lines)
 
 
 def main() -> None:

@@ -29,8 +29,24 @@ venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
 # заполните OPENAI_API_KEY и WB_API_TOKEN (или WB_ACCOUNTS) в .env
-python -m app.seed
 python main.py
+```
+
+## Импорт RAG примеров
+По умолчанию скрипт берет `rag_example.json` из корня проекта и записывает данные в таблицу `rag_examples`.
+
+```powershell
+python -m app.rag_seed
+```
+
+Если файл лежит в другом месте, задайте переменную:
+```powershell
+RAG_SEED_PATH=path\to\file.json python -m app.rag_seed
+```
+
+Чтобы проставить один и тот же `product_id` всем импортируемым примерам:
+```powershell
+RAG_PRODUCT_ID=14 python -m app.rag_seed
 ```
 
 ## Конфигурация (.env)

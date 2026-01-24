@@ -6,7 +6,8 @@
         {{
           "Входящие" if tab == "inbox" else
           ("Отправленные" if tab == "sent" else
-          ("Аккаунты" if tab == "accounts" else "Примеры ИИ"))
+          ("Аккаунты" if tab == "accounts" else
+          ("Товары WB" if tab == "products" else "RAG примеры")))
         }}
       </h1>
       <p class="muted">
@@ -16,8 +17,10 @@
           История отзывов, уже отправленных в WB.
         {% elif tab == "accounts" %}
           Управляйте аккаунтами маркетплейсов для автоматических ответов.
+        {% elif tab == "products" %}
+          Синхронизация карточек товаров WB для использования в примерах.
         {% else %}
-          Настройка примеров, используемых в промптах для ИИ.
+          Настройка RAG примеров с данными о товаре и стилем ответа.
         {% endif %}
       </p>
     </div>
@@ -127,12 +130,22 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <div class="card-title">Добавить пример</div>
-            <div class="card-subtitle">Используется для стилистики ответов ИИ.</div>
+            <div class="card-title">Добавить RAG пример</div>
+            <div class="card-subtitle">Добавьте данные о товаре и пример ответа в нужном стиле.</div>
           </div>
         </div>
         <div class="card-body">
           <form class="form" method="post" action="{{ url_for('create_example') }}">
+            <input type="hidden" name="marketplace_id" value="{{ selected_marketplace_id or '' }}" />
+            <label class="field">
+              <span>Товар из WB (необязательно)</span>
+              <select name="product_external_id">
+                <option value="">-- не выбрано --</option>
+                {% for product in products or [] %}
+                  <option value="{{ product['external_id'] }}">{{ product["name"] or product["vendor_code"] or product["external_id"] }}</option>
+                {% endfor %}
+              </select>
+            </label>
             <div class="feedback-row">
               <label class="field">
                 <span>Внешний id (необязательно)</span>
@@ -146,6 +159,14 @@
             <label class="field">
               <span>Название товара</span>
               <input type="text" name="product_name" />
+            </label>
+            <label class="field">
+              <span>Описание товара</span>
+              <textarea name="product_description" rows="3"></textarea>
+            </label>
+            <label class="field">
+              <span>Полезные свойства (по одному на строку)</span>
+              <textarea name="product_benefits" rows="4"></textarea>
             </label>
             <label class="field">
               <span>Имя пользователя</span>
@@ -179,16 +200,34 @@
             <div class="card" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
               <div class="card-header">
                 <div>
-                  <div class="card-title">{{ item["product_name"] or "Пример" }}</div>
+                  <div class="card-title">{{ item["product_name"] or "RAG пример" }}</div>
                   <div class="card-subtitle">Оценка {{ item["rating"] or "-" }} · {{ item["created_at"] | format_dt }}</div>
                 </div>
-                <div class="badge neutral">пример</div>
+                <div class="badge neutral">rag</div>
               </div>
               <div class="card-body">
                 <form class="form" method="post" action="{{ url_for('update_example', example_id=item['id']) }}">
+                  <input type="hidden" name="marketplace_id" value="{{ selected_marketplace_id or '' }}" />
+                  <label class="field">
+                    <span>Товар из WB (необязательно)</span>
+                    <select name="product_external_id">
+                      <option value="">-- не выбрано --</option>
+                      {% for product in products or [] %}
+                        <option value="{{ product['external_id'] }}">{{ product["name"] or product["vendor_code"] or product["external_id"] }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
                   <label class="field">
                     <span>Название товара</span>
                     <input type="text" name="product_name" value="{{ item['product_name'] or '' }}" />
+                  </label>
+                  <label class="field">
+                    <span>Описание товара</span>
+                    <textarea name="product_description" rows="2">{{ item['product_description'] or '' }}</textarea>
+                  </label>
+                  <label class="field">
+                    <span>Полезные свойства</span>
+                    <textarea name="product_benefits" rows="3">{{ item['product_benefits'] or '' }}</textarea>
                   </label>
                   <label class="field">
                     <span>Имя пользователя</span>
@@ -236,6 +275,87 @@
           <div class="empty-state">
             <h3>Примеров пока нет</h3>
             <p>Добавьте несколько примеров, чтобы задать стиль ИИ.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+    <script>
+      const productsPayload = {{ (products_payload or []) | tojson }};
+      const productsById = {};
+      for (const item of productsPayload) {
+        if (item && item.external_id) {
+          productsById[item.external_id] = item;
+        }
+      }
+
+      function applyProductData(selectEl) {
+        const product = productsById[selectEl.value];
+        if (!product) return;
+        const form = selectEl.closest("form");
+        if (!form) return;
+        const nameInput = form.querySelector("input[name='product_name']");
+        const descTextarea = form.querySelector("textarea[name='product_description']");
+        const benefitsTextarea = form.querySelector("textarea[name='product_benefits']");
+        if (nameInput) nameInput.value = product.name || "";
+        if (descTextarea) descTextarea.value = product.description || "";
+        if (benefitsTextarea) benefitsTextarea.value = product.benefits || "";
+      }
+
+      document.querySelectorAll("select[name='product_external_id']").forEach((selectEl) => {
+        selectEl.addEventListener("change", () => applyProductData(selectEl));
+      });
+    </script>
+  {% elif tab == "products" %}
+    <section class="split">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Синхронизация товаров WB</div>
+            <div class="card-subtitle">Обновите данные карточек для примеров и подсказок.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form class="form" method="post" action="{{ url_for('refresh_products') }}">
+            <input type="hidden" name="marketplace_id" value="{{ selected_marketplace_id or '' }}" />
+            <button class="btn primary" type="submit">Обновить товары WB</button>
+          </form>
+          {% if not selected_marketplace_id %}
+            <div class="feedback-block">
+              <div class="label">Подсказка</div>
+              <div class="value">Выберите аккаунт слева, чтобы обновить товары конкретного WB-аккаунта.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="stack">
+        {% if products %}
+          {% for product in products %}
+            <div class="card" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">{{ product["name"] or product["vendor_code"] or "Товар WB" }}</div>
+                  <div class="card-subtitle">Артикул: {{ product["external_id"] or "-" }} · {{ product["updated_at"] | format_dt }}</div>
+                </div>
+                <div class="badge neutral">wb</div>
+              </div>
+              <div class="card-body">
+                <div class="feedback-block">
+                  <div class="label">Описание</div>
+                  <div class="value">{{ product["description"] or "-" }}</div>
+                </div>
+                {% if product["brand"] %}
+                  <div class="feedback-block">
+                    <div class="label">Бренд</div>
+                    <div class="value">{{ product["brand"] }}</div>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <h3>Товаров пока нет</h3>
+            <p>Нажмите «Обновить товары WB», чтобы подтянуть карточки.</p>
           </div>
         {% endif %}
       </div>

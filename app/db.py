@@ -70,7 +70,23 @@ def init_db(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS ai_examples (
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            marketplace_id INTEGER NOT NULL,
+            external_id TEXT NOT NULL,
+            vendor_code TEXT,
+            name TEXT,
+            description TEXT,
+            brand TEXT,
+            characteristics TEXT,
+            raw_json TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (marketplace_id, external_id),
+            FOREIGN KEY (marketplace_id) REFERENCES marketplaces(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS rag_examples (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             external_id TEXT NOT NULL UNIQUE,
             feedback_created_at TEXT,
@@ -79,12 +95,18 @@ def init_db(conn: sqlite3.Connection) -> None:
             text TEXT,
             pros TEXT,
             cons TEXT,
+            product_id INTEGER,
             product_name TEXT,
+            product_description TEXT,
+            product_benefits TEXT,
             answer_text TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id)
         );
         """
     )
+    _drop_legacy_rag_table(conn)
+    _ensure_rag_example_columns(conn)
     _ensure_feedback_columns(conn)
     _ensure_marketplace_account_columns(conn)
     conn.commit()
@@ -96,6 +118,7 @@ def _ensure_feedback_columns(conn: sqlite3.Connection) -> None:
         "sent_response": "TEXT",
         "sent_at": "TEXT",
         "sent_raw": "TEXT",
+        "product_nm_id": "INTEGER",
     }
     existing = {
         row["name"]
@@ -119,6 +142,24 @@ def _ensure_marketplace_account_columns(conn: sqlite3.Connection) -> None:
         if name in existing:
             continue
         conn.execute(f"ALTER TABLE marketplace_accounts ADD COLUMN {name} {ddl}")
+
+
+def _ensure_rag_example_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        "product_id": "INTEGER",
+    }
+    existing = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(rag_examples)").fetchall()
+    }
+    for name, ddl in columns.items():
+        if name in existing:
+            continue
+        conn.execute(f"ALTER TABLE rag_examples ADD COLUMN {name} {ddl}")
+
+
+def _drop_legacy_rag_table(conn: sqlite3.Connection) -> None:
+    conn.execute("DROP TABLE IF EXISTS ai_examples")
 
 
 def get_or_create_marketplace(conn: sqlite3.Connection, code: str, name: str) -> int:
@@ -169,11 +210,12 @@ def insert_or_touch_feedback(conn: sqlite3.Connection, data: dict[str, Any]) -> 
             pros,
             cons,
             product_name,
+            product_nm_id,
             status,
             raw_json,
             last_seen_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(marketplace_id, external_id) DO UPDATE SET
             last_seen_at = CURRENT_TIMESTAMP
         """,
@@ -186,6 +228,7 @@ def insert_or_touch_feedback(conn: sqlite3.Connection, data: dict[str, Any]) -> 
             data.get("pros"),
             data.get("cons"),
             data.get("product_name"),
+            data.get("product_nm_id"),
             data.get("status", "new"),
             payload,
         ),
@@ -472,36 +515,131 @@ def get_admin_user_by_id(conn: sqlite3.Connection, user_id: int) -> sqlite3.Row 
     ).fetchone()
 
 
-def list_ai_examples(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+def upsert_product(conn: sqlite3.Connection, marketplace_id: int, data: dict[str, Any]) -> None:
+    payload = json.dumps(data.get("raw_json") or {}, ensure_ascii=False)
+    characteristics = json.dumps(data.get("characteristics") or [], ensure_ascii=False)
+    conn.execute(
+        """
+        INSERT INTO products (
+            marketplace_id,
+            external_id,
+            vendor_code,
+            name,
+            description,
+            brand,
+            characteristics,
+            raw_json,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(marketplace_id, external_id) DO UPDATE SET
+            vendor_code = excluded.vendor_code,
+            name = excluded.name,
+            description = excluded.description,
+            brand = excluded.brand,
+            characteristics = excluded.characteristics,
+            raw_json = excluded.raw_json,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            marketplace_id,
+            data["external_id"],
+            data.get("vendor_code"),
+            data.get("name"),
+            data.get("description"),
+            data.get("brand"),
+            characteristics,
+            payload,
+        ),
+    )
+    conn.commit()
+
+
+def list_products(
+    conn: sqlite3.Connection,
+    marketplace_id: int | None = None,
+) -> list[sqlite3.Row]:
+    where = ""
+    params: list[Any] = []
+    if marketplace_id is not None:
+        where = "WHERE marketplace_id = ?"
+        params.append(marketplace_id)
+    rows = conn.execute(
+        f"""
+        SELECT *
+        FROM products
+        {where}
+        ORDER BY name ASC, id ASC
+        """,
+        params,
+    ).fetchall()
+    return list(rows)
+
+
+def get_product_by_marketplace_external_id(
+    conn: sqlite3.Connection,
+    marketplace_id: int,
+    external_id: int | str | None,
+) -> sqlite3.Row | None:
+    if external_id is None:
+        return None
+    return conn.execute(
+        """
+        SELECT *
+        FROM products
+        WHERE marketplace_id = ? AND external_id = ?
+        """,
+        (marketplace_id, str(external_id)),
+    ).fetchone()
+
+
+def get_product_by_marketplace_name(
+    conn: sqlite3.Connection,
+    marketplace_id: int,
+    name: str | None,
+) -> sqlite3.Row | None:
+    if not name:
+        return None
+    return conn.execute(
+        """
+        SELECT *
+        FROM products
+        WHERE marketplace_id = ? AND name = ?
+        """,
+        (marketplace_id, name),
+    ).fetchone()
+
+
+def list_rag_examples(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     rows = conn.execute(
         """
         SELECT *
-        FROM ai_examples
+        FROM rag_examples
         ORDER BY created_at DESC, id DESC
         """,
     ).fetchall()
     return list(rows)
 
 
-def get_ai_example(conn: sqlite3.Connection, example_id: int) -> sqlite3.Row | None:
+def get_rag_example(conn: sqlite3.Connection, example_id: int) -> sqlite3.Row | None:
     return conn.execute(
-        "SELECT * FROM ai_examples WHERE id = ?",
+        "SELECT * FROM rag_examples WHERE id = ?",
         (example_id,),
     ).fetchone()
 
 
-def delete_ai_example(conn: sqlite3.Connection, example_id: int) -> None:
+def delete_rag_example(conn: sqlite3.Connection, example_id: int) -> None:
     conn.execute(
-        "DELETE FROM ai_examples WHERE id = ?",
+        "DELETE FROM rag_examples WHERE id = ?",
         (example_id,),
     )
     conn.commit()
 
 
-def upsert_ai_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
+def upsert_rag_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
     conn.execute(
         """
-        INSERT INTO ai_examples (
+        INSERT INTO rag_examples (
             external_id,
             feedback_created_at,
             rating,
@@ -509,10 +647,13 @@ def upsert_ai_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
             text,
             pros,
             cons,
+            product_id,
             product_name,
+            product_description,
+            product_benefits,
             answer_text
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(external_id) DO UPDATE SET
             feedback_created_at = excluded.feedback_created_at,
             rating = excluded.rating,
@@ -520,7 +661,10 @@ def upsert_ai_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
             text = excluded.text,
             pros = excluded.pros,
             cons = excluded.cons,
+            product_id = excluded.product_id,
             product_name = excluded.product_name,
+            product_description = excluded.product_description,
+            product_benefits = excluded.product_benefits,
             answer_text = excluded.answer_text
         """,
         (
@@ -531,14 +675,17 @@ def upsert_ai_example(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
             data.get("text"),
             data.get("pros"),
             data.get("cons"),
+            data.get("product_id"),
             data.get("product_name"),
+            data.get("product_description"),
+            data.get("product_benefits"),
             data.get("answer_text"),
         ),
     )
     conn.commit()
 
 
-def get_ai_examples(
+def get_rag_examples(
     conn: sqlite3.Connection,
     product_name: str,
     rating: int | None,
@@ -547,7 +694,7 @@ def get_ai_examples(
     rows = conn.execute(
         """
         SELECT *
-        FROM ai_examples
+        FROM rag_examples
         ORDER BY
             CASE WHEN product_name = ? THEN 1 ELSE 0 END DESC,
             CASE WHEN rating = ? THEN 1 ELSE 0 END DESC,

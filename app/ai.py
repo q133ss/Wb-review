@@ -25,12 +25,19 @@ def _render_examples(examples: Iterable[Any]) -> str:
         cons = str(_get_item_value(item, "cons") or "")
         rating = _get_item_value(item, "rating") or ""
         product = str(_get_item_value(item, "product_name") or "")
+        product_description = str(_get_item_value(item, "product_description") or "")
+        product_benefits = str(_get_item_value(item, "product_benefits") or "")
         answer = str(_get_item_value(item, "answer_text") or "")
         cleaned = answer.lstrip()
         if cleaned.startswith("Ответ"):
             answer = cleaned[len("Ответ") :].lstrip()
-        lines.append(f"{idx}) Отзыв: {text} Плюсы: {pros} Минусы: {cons} "
-                     f"Оценка: {rating} Товар: {product}")
+        lines.append(f"{idx}) Название товара: {product}")
+        if product_description:
+            lines.append(f"Описание товара: {product_description}")
+        if product_benefits:
+            lines.append("Полезные свойства товара:")
+            lines.append(product_benefits)
+        lines.append(f"Отзыв: {text} Плюсы: {pros} Минусы: {cons} Оценка: {rating}")
         lines.append(f"Ответ: {answer}")
     return "\n".join(lines)
 
