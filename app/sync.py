@@ -63,6 +63,15 @@ def _reply_mode(rating: int | None) -> str:
     return "skip"
 
 
+def _row_value(row, key: str, default=None):
+    if row is None:
+        return default
+    try:
+        return row[key]
+    except (KeyError, IndexError, TypeError):
+        return default
+
+
 def process_ai(
     conn,
     settings,
@@ -94,8 +103,8 @@ def process_ai(
             "pros": row["pros"] or "",
             "cons": row["cons"] or "",
             "product_name": row["product_name"] or "",
-            "product_title": (product_row or {}).get("name") or "",
-            "product_description": (product_row or {}).get("description") or "",
+            "product_title": _row_value(product_row, "name", "") or "",
+            "product_description": _row_value(product_row, "description", "") or "",
             "product_benefits": _format_product_benefits(product_row),
             "marketplace": "WB",
         }
@@ -128,7 +137,11 @@ def sync_wb_account(conn, settings, account_row, save_raw: bool = True) -> int:
         if raw_payload is not None and save_raw:
             with open(_last_response_path(account_row), "w", encoding="utf-8") as f:
                 json.dump(raw_payload, f, ensure_ascii=False, indent=2)
-    auto_reply_enabled = int(account_row.get("auto_reply_enabled", 1)) == 1
+    auto_reply_raw = _row_value(account_row, "auto_reply_enabled", 1)
+    try:
+        auto_reply_enabled = int(auto_reply_raw) == 1
+    except (TypeError, ValueError):
+        auto_reply_enabled = True
     process_ai(conn, settings, marketplace_id, client, auto_reply_enabled)
     return len(items)
 
