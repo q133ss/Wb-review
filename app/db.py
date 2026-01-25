@@ -409,7 +409,7 @@ def list_pending_feedbacks(
     marketplace_id: int | None = None,
     limit: int = 200,
 ) -> list[sqlite3.Row]:
-    where = "WHERE f.status != 'sent'"
+    where = "WHERE f.status != 'sent' AND a.is_active = 1"
     params: list[Any] = []
     if marketplace_id is not None:
         where += " AND f.marketplace_id = ?"
@@ -419,6 +419,7 @@ def list_pending_feedbacks(
         f"""
         SELECT f.*, m.name AS marketplace_name, m.code AS marketplace_code
         FROM feedbacks AS f
+        JOIN marketplace_accounts AS a ON a.marketplace_id = f.marketplace_id
         JOIN marketplaces AS m ON m.id = f.marketplace_id
         {where}
         ORDER BY f.created_at DESC, f.id DESC
