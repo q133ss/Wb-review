@@ -1,28 +1,18 @@
-# wbReviewBot
+![Скриншот](screenshot.jpg)
+# WB Reviews Auto-Reply Service
 
-Простой сервис для сбора отзывов/вопросов из маркетплейсов, генерации ответов через ИИ и сохранения истории в БД. Сейчас реализован базовый polling WB и генерация ответа для отзывов с рейтингом 4–5.
+[English version](#english)
 
-## Требования заказчика (из Т-)
-- Получать вопросы и отзывы через API маркетплейса.
-- Отправлять текст в ИИ (промпт предоставляется заказчиком).
-- Показывать ответ в интерфейсе и давать возможность редактировать.
-- После подтверждения менеджером отправлять ответ через API.
-- Хранить историю обращений и ответов.
-- Автоответы для 4 и 5 звезд.
-- Промпт ИИ редактируется без изменения кода.
+Сервис для автоматизации обработки отзывов/вопросов на Wildberries: фоновый воркер регулярно опрашивает WB API, сохраняет новые события в SQLite и генерирует ответы через OpenAI. Для рейтинга 4–5 доступна автоотправка, для низких оценок — ручное подтверждение. Настройки и промпт редактируются из админки без правок кода.
 
-## Архитектура и расширяемость
-- Коннекторы маркетплейсов лежат в `app/marketplaces/`.
-- В БД используется поле `marketplace_id` и уникальность `marketplace + external_id`, поэтому легко подключать Ozon и другие источники.
-- Промпт хранится в таблице `settings` и может обновляться через будущий интерфейс.
+**Стек**
+- Python 3.11+
+- SQLite
+- OpenAI API
+- Wildberries API
+- Flask (админка)
 
-## Текущий функционал
-- Периодический запрос новых отзывов WB (неотвеченные).
-- Сохранение отзывов в SQLite.
-- Генерация ответа через OpenAI для отзывов с рейтингом 4–5.
-- Хранение ответа ИИ и промпта в БД.
-
-## Быстрый старт
+**Запуск**
 ```powershell
 python -m venv venv
 venv\Scripts\activate
@@ -32,46 +22,39 @@ copy .env.example .env
 python main.py
 ```
 
-## Импорт RAG примеров
-По умолчанию скрипт берет `rag_example.json` из корня проекта и записывает данные в таблицу `rag_examples`.
-
+**Админка**
 ```powershell
-python -m app.rag_seed
-```
-
-Если файл лежит в другом месте, задайте переменную:
-```powershell
-RAG_SEED_PATH=path\to\file.json python -m app.rag_seed
-```
-
-Чтобы проставить один и тот же `product_id` всем импортируемым примерам:
-```powershell
-RAG_PRODUCT_ID=14 python -m app.rag_seed
-```
-
-## Конфигурация (.env)
-- `OPENAI_API_KEY` — ключ OpenAI.
-- `OPENAI_MODEL` — модель (по умолчанию `gpt-4o-mini`).
-- `WB_API_TOKEN` — токен WB (используется только для первичного заполнения БД).
-- `WB_ACCOUNTS` — список аккаунтов WB в формате `name:token,name2:token2` (используется только для первичного заполнения БД).
-- `DB_PATH` — путь к SQLite (по умолчанию `app.db`).
-- `POLL_INTERVAL_SEC` — интервал опроса (по умолчанию 60).
-- `PROMPT_TEMPLATE` — шаблон промпта (можно менять без правки кода).
-
-## Схема БД (основное)
-- `marketplaces` — список источников (WB, Ozon, ...).
-- `feedbacks` — отзывы, статус, ответ ИИ, сырой JSON.
-- `settings` — ключ-значение для системных настроек (включая промпт).
-
-## Админка
-```powershell
-pip install -r requirements.txt
 python admin.py
 ```
-
 После запуска откройте `http://127.0.0.1:8000/setup` для создания первого администратора.
 
-Переменные окружения:
-- `ADMIN_SECRET_KEY` - секрет для сессий Flask (рекомендуется в проде).
-- `ADMIN_HOST` - адрес для бинда (по умолчанию `127.0.0.1`).
-- `ADMIN_PORT` - порт (по умолчанию `8000`).
+---
+
+<a id="english"></a>
+
+**English**
+
+Service for automating Wildberries reviews/questions processing: a background worker polls the WB API, stores new items in SQLite, and generates responses via OpenAI. Ratings 4–5 can be auto-sent, low ratings require manual confirmation. Settings and the prompt are editable from the admin panel without code changes.
+
+**Stack**
+- Python 3.11+
+- SQLite
+- OpenAI API
+- Wildberries API
+- Flask (admin panel)
+
+**Run**
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+# set OPENAI_API_KEY and WB_API_TOKEN (or WB_ACCOUNTS) in .env
+python main.py
+```
+
+**Admin panel**
+```powershell
+python admin.py
+```
+After open `http://127.0.0.1:8000/setup` to create the first admin.
