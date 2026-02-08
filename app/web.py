@@ -40,12 +40,14 @@ from app.db import (
     list_pending_feedbacks,
     list_sent_feedbacks,
     mark_sent,
+    set_marketplace_account_business_id,
     set_marketplace_account_auto_reply,
     update_draft_response,
     upsert_product,
     upsert_rag_example,
 )
 from app.marketplaces.wb import WildberriesClient
+from app.marketplaces.ym import YandexMarketClient
 
 load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -244,20 +246,27 @@ def send_feedback(feedback_id: int):
         flash("Аккаунт деактивирован.", "error")
         marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
         return redirect(_admin_url("inbox", marketplace_id))
-    if account["marketplace_type"] != "wb":
-        flash("Отправка доступна только для Wildberries.", "error")
-        marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
-        return redirect(_admin_url("inbox", marketplace_id))
-    client = WildberriesClient(account["api_token"])
     try:
-        payload = client.send_response(str(feedback["external_id"]), text)
+        if account["marketplace_type"] == "wb":
+            client = WildberriesClient(account["api_token"])
+            payload = client.send_response(str(feedback["external_id"]), text)
+        elif account["marketplace_type"] == "ym":
+            client = YandexMarketClient(account["api_token"])
+            business_id = account["business_id"]
+            if business_id is None:
+                business_id = client.detect_business_id()
+                set_marketplace_account_business_id(conn, int(account["id"]), int(business_id))
+            payload = client.send_response(int(business_id), str(feedback["external_id"]), text)
+        else:
+            raise RuntimeError("Unsupported marketplace type for sending.")
     except Exception as exc:
         flash(f"Ошибка отправки: {exc}", "error")
         marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
         return redirect(_admin_url("inbox", marketplace_id))
     update_draft_response(conn, feedback_id, text)
     mark_sent(conn, feedback_id, text, payload)
-    flash("Ответ отправлен в WB.", "success")
+    label = MARKETPLACE_LABELS.get(account["marketplace_type"], account["marketplace_type"])
+    flash(f"Ответ отправлен в {label}.", "success")
     marketplace_id = _parse_marketplace_id(request.form.get("marketplace_id"))
     return redirect(_admin_url("inbox", marketplace_id))
 
@@ -269,6 +278,7 @@ def create_account():
     marketplace_type = (request.form.get("marketplace_type") or "").strip().lower()
     account_name = (request.form.get("account_name") or "").strip()
     api_token = (request.form.get("api_token") or "").strip()
+    business_id = _parse_int(request.form.get("business_id"))
     if marketplace_type not in MARKETPLACE_LABELS:
         flash("Укажите корректный тип маркетплейса.", "error")
         return redirect(url_for("admin", tab="accounts"))
@@ -286,6 +296,7 @@ def create_account():
             api_token=api_token,
             marketplace_code=marketplace_code,
             marketplace_name=marketplace_name,
+            business_id=business_id if marketplace_type == "ym" else None,
         )
     except Exception as exc:
         flash(f"Не удалось создать аккаунт: {exc}", "error")

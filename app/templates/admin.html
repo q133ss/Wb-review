@@ -79,7 +79,7 @@
                 </label>
                 <div class="form-actions">
                   <button class="btn ghost" type="submit" formaction="{{ url_for('save_feedback', feedback_id=item['id']) }}">Сохранить</button>
-                  <button class="btn primary" type="submit" formaction="{{ url_for('send_feedback', feedback_id=item['id']) }}">Отправить в WB</button>
+                  <button class="btn primary" type="submit" formaction="{{ url_for('send_feedback', feedback_id=item['id']) }}">Отправить в {{ item["marketplace_name"] or "маркетплейс" }}</button>
                 </div>
               </form>
             </div>
@@ -387,6 +387,10 @@
               <span>API токен</span>
               <textarea name="api_token" rows="3" required></textarea>
             </label>
+            <label class="field">
+              <span>Business ID (только для Яндекс Маркета)</span>
+              <input type="number" name="business_id" placeholder="Например: 123456" />
+            </label>
             <button class="btn primary" type="submit">Сохранить аккаунт</button>
           </form>
         </div>
@@ -407,6 +411,12 @@
                   <div class="label">Маркетплейс</div>
                   <div class="value">{{ account["marketplace_name"] }}</div>
                 </div>
+                {% if account["business_id"] %}
+                  <div class="feedback-block">
+                    <div class="label">Business ID</div>
+                    <div class="value">{{ account["business_id"] }}</div>
+                  </div>
+                {% endif %}
                 {% if account["is_active"] == 1 %}
                   <form class="form" method="post" action="{{ url_for('toggle_auto_reply', account_id=account['id']) }}">
                     <label class="field">

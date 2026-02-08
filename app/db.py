@@ -27,6 +27,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             marketplace_type TEXT NOT NULL,
             account_name TEXT NOT NULL,
             api_token TEXT NOT NULL,
+            business_id INTEGER,
             is_active INTEGER NOT NULL DEFAULT 1,
             auto_reply_enabled INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -133,6 +134,7 @@ def _ensure_feedback_columns(conn: sqlite3.Connection) -> None:
 def _ensure_marketplace_account_columns(conn: sqlite3.Connection) -> None:
     columns = {
         "auto_reply_enabled": "INTEGER NOT NULL DEFAULT 1",
+        "business_id": "INTEGER",
     }
     existing = {
         row["name"]
@@ -362,6 +364,7 @@ def create_marketplace_account(
     api_token: str,
     marketplace_code: str,
     marketplace_name: str,
+    business_id: int | None = None,
 ) -> int:
     cur = conn.execute(
         "INSERT INTO marketplaces (code, name) VALUES (?, ?)",
@@ -374,11 +377,12 @@ def create_marketplace_account(
             marketplace_id,
             marketplace_type,
             account_name,
-            api_token
+            api_token,
+            business_id
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (marketplace_id, marketplace_type, account_name, api_token),
+        (marketplace_id, marketplace_type, account_name, api_token, business_id),
     )
     conn.commit()
     return int(cur.lastrowid)
@@ -400,6 +404,18 @@ def set_marketplace_account_auto_reply(
     conn.execute(
         "UPDATE marketplace_accounts SET auto_reply_enabled = ? WHERE id = ?",
         (1 if enabled else 0, account_id),
+    )
+    conn.commit()
+
+
+def set_marketplace_account_business_id(
+    conn: sqlite3.Connection,
+    account_id: int,
+    business_id: int,
+) -> None:
+    conn.execute(
+        "UPDATE marketplace_accounts SET business_id = ? WHERE id = ?",
+        (business_id, account_id),
     )
     conn.commit()
 

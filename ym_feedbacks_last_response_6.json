@@ -1,0 +1,373 @@
+{
+  "status": "OK",
+  "result": {
+    "feedbacks": [
+      {
+        "feedbackId": 433527023,
+        "createdAt": "2026-02-08T19:45:14.014+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 51612399555,
+          "modelId": 4872158996,
+          "offerId": "DIA300SKU"
+        },
+        "author": "Татьяна Хайрутдинова",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 5,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 433420822,
+        "createdAt": "2026-02-08T01:55:57.883+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 53378892545,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "author": "вика",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 1,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 432776990,
+        "createdAt": "2026-02-03T10:32:44.332+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 46707964608,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "author": "Svetlana Ok",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 432468427,
+        "createdAt": "2026-01-31T23:44:06.887+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 47251915843,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "author": "Ирина Пушкарева",
+        "description": {
+          "advantages": "не обнаружила ,не знаю что и написать",
+          "disadvantages": "неприятно пить,без особого эффекта",
+          "comment": "Пропила курсом,никаких изменений не заметила, даже по результатам анализов"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 2,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431989373,
+        "createdAt": "2026-01-28T14:03:38.75+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 514089699,
+          "modelId": 931319698,
+          "offerId": "SKUAML0200"
+        },
+        "author": "Екатерина Разумова",
+        "description": {
+          "advantages": "мне не понравилась магниевая соль. Предположу, что эффект (пощипывания) от масла будет вне зависимости от производителя",
+          "disadvantages": "больше не возьму магниевое масло"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431827765,
+        "createdAt": "2026-01-27T12:10:56.327+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 46021996673,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "author": "117715 Хрушкова",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431760111,
+        "createdAt": "2026-01-26T21:50:37.561+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 52930835457,
+          "modelId": 4955812162,
+          "offerId": "KAO708"
+        },
+        "author": "Анастасия Константинова",
+        "description": {
+          "advantages": "нет",
+          "disadvantages": "заказывала этот же каолин в другом маркетплейсе и он был великолепен. заказала здесь, т.к. был со скидкой. Каолин пришел белый, вкуса мелового нет вообще, так еще и хрустит на зубах, ощущение что пыль стеклянная."
+        },
+        "media": {
+          "photos": [
+            "https://avatars.mds.yandex.net/get-market-ugc/19838174/e17d3620-9f67-45c7-bc3a-6b79fbb73e3a.JPG/orig",
+            "https://avatars.mds.yandex.net/get-market-ugc/19531612/5c37fa07-8b1f-4fbd-b5d0-68e97f0f50ae.JPG/orig"
+          ]
+        },
+        "statistics": {
+          "rating": 1,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431584759,
+        "createdAt": "2026-01-25T19:16:31.988+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 50023453251,
+          "modelId": 4872158996,
+          "offerId": "DIA300SKU"
+        },
+        "author": "марина Воронцова",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431565882,
+        "createdAt": "2026-01-25T17:07:02.579+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 46087882112,
+          "modelId": 1791005783,
+          "offerId": "SKUSOD1002"
+        },
+        "author": "Volodya A.",
+        "description": {
+          "comment": "не знаю что за товар, знаю что сода убивает витамин В1, больше мне о ней знать не обязательно..."
+        },
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431556517,
+        "createdAt": "2026-01-25T16:06:13.609+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 46233400449,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 399897781,
+        "createdAt": "2026-01-25T12:14:01.448+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 45619373187,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 5,
+          "commentsCount": 1
+        }
+      },
+      {
+        "feedbackId": 431433707,
+        "createdAt": "2026-01-24T18:34:49.532+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 53244668097,
+          "modelId": 4872158996,
+          "offerId": "DIA300SKU"
+        },
+        "author": "Алсу М.",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431327364,
+        "createdAt": "2026-01-23T23:49:37.594+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 48418225793,
+          "modelId": 4872158996,
+          "offerId": "DIA300SKU"
+        },
+        "author": "Ксения Рыжакина",
+        "description": {
+          "disadvantages": "Ну, не знаю… никакого эффекта"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 1,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 431074200,
+        "createdAt": "2026-01-22T09:19:58.981+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 48891825283,
+          "modelId": 4872158996,
+          "offerId": "DIA300SKU"
+        },
+        "author": "Мaрина Мурлатова",
+        "description": {
+          "comment": "не понравился... думаю что будет  накапливаться в желудке и влиять на процесс пищеварения"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 2,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 430754677,
+        "createdAt": "2026-01-20T01:05:29.296+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 50741173569,
+          "modelId": 931319698,
+          "offerId": "SKUAML0200"
+        },
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 430560762,
+        "createdAt": "2026-01-18T16:55:43.561+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 53230271744,
+          "modelId": 1791005783,
+          "offerId": "SKUSOD1002"
+        },
+        "author": "Фархан",
+        "description": {
+          "comment": "В место 2 упаковки ( 1 кг), привезли одна упаковка (500 г)"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 1,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 430179738,
+        "createdAt": "2026-01-15T21:10:12.912+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 50901686721,
+          "modelId": 931319698,
+          "offerId": "SKUAML0200"
+        },
+        "author": "НТА",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 1,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 429818048,
+        "createdAt": "2026-01-13T12:07:28.598+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 48618136640,
+          "modelId": 4872158996,
+          "offerId": "DIA300SKU"
+        },
+        "author": "Ирина Кузнецова ООО КТК",
+        "description": {
+          "advantages": "не знаю",
+          "disadvantages": "не смолгла в себя запихнуть"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 3,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 429035707,
+        "createdAt": "2026-01-08T00:44:42.983+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 46336309507,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "author": "Галина Мальцева",
+        "description": {},
+        "media": {},
+        "statistics": {
+          "rating": 1,
+          "commentsCount": 0
+        }
+      },
+      {
+        "feedbackId": 428523280,
+        "createdAt": "2026-01-05T16:17:09.279+03:00",
+        "needReaction": true,
+        "identifiers": {
+          "orderId": 49331715843,
+          "modelId": 4872158996,
+          "offerId": "DIA348SKU"
+        },
+        "author": "AMA",
+        "description": {
+          "advantages": "Рабочий порошок"
+        },
+        "media": {},
+        "statistics": {
+          "rating": 5,
+          "commentsCount": 1
+        }
+      }
+    ],
+    "paging": {}
+  }
+}

@@ -32,3 +32,6 @@ class MarketplaceClient:
 
     def fetch_unanswered(self) -> list[FeedbackItem]:
         raise NotImplementedError
+
+    def send_response(self, feedback_id: str, text: str) -> dict[str, Any]:
+        raise NotImplementedError
