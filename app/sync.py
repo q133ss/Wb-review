@@ -82,50 +82,54 @@ def process_ai(
     prompt_template = ensure_prompt(conn, settings.prompt_template)
     rows = get_new_feedbacks(conn, marketplace_id)
     for row in rows:
-        mode = _reply_mode(row["rating"])
-        if mode == "skip":
-            mark_skipped(conn, row["id"], "manual_needed")
-            continue
-        if mode == "auto_send" and not auto_reply_enabled:
-            mode = "manual_confirm"
-        if not settings.openai_api_key:
-            mark_skipped(conn, row["id"], "ai_skipped_no_key")
-            continue
-        product_row = _get_product_context(
-            conn,
-            marketplace_id,
-            row["product_nm_id"],
-            row["product_name"],
-        )
-        payload = {
-            "text": row["text"] or "",
-            "rating": row["rating"] or "",
-            "pros": row["pros"] or "",
-            "cons": row["cons"] or "",
-            "product_name": row["product_name"] or "",
-            "product_title": _row_value(product_row, "name", "") or "",
-            "product_description": _row_value(product_row, "description", "") or "",
-            "product_benefits": _format_product_benefits(product_row),
-            "marketplace": "WB",
-        }
-        examples = get_rag_examples(
-            conn,
-            row["product_name"] or "",
-            row["rating"],
-        )
-        prompt = build_prompt(prompt_template, payload, examples)
-        answer = generate_response(
-            api_key=settings.openai_api_key,
-            model=settings.openai_model,
-            prompt=prompt,
-        )
-        update_ai_response(conn, row["id"], answer, settings.openai_model, prompt)
-        if mode == "auto_send":
-            try:
-                sent_payload = client.send_response(str(row["external_id"]), answer)
-                mark_sent(conn, row["id"], answer, sent_payload)
-            except Exception as exc:
-                print(f"Auto-send error for feedback {row['external_id']}: {exc}")
+        try:
+            mode = _reply_mode(row["rating"])
+            if mode == "skip":
+                mark_skipped(conn, row["id"], "manual_needed")
+                continue
+            if mode == "auto_send" and not auto_reply_enabled:
+                mode = "manual_confirm"
+            if not settings.openai_api_key:
+                mark_skipped(conn, row["id"], "ai_skipped_no_key")
+                continue
+            product_row = _get_product_context(
+                conn,
+                marketplace_id,
+                row["product_nm_id"],
+                row["product_name"],
+            )
+            payload = {
+                "text": row["text"] or "",
+                "rating": row["rating"] or "",
+                "pros": row["pros"] or "",
+                "cons": row["cons"] or "",
+                "product_name": row["product_name"] or "",
+                "product_title": _row_value(product_row, "name", "") or "",
+                "product_description": _row_value(product_row, "description", "") or "",
+                "product_benefits": _format_product_benefits(product_row),
+                "marketplace": "WB",
+            }
+            examples = get_rag_examples(
+                conn,
+                row["product_name"] or "",
+                row["rating"],
+            )
+            prompt = build_prompt(prompt_template, payload, examples)
+            answer = generate_response(
+                api_key=settings.openai_api_key,
+                model=settings.openai_model,
+                prompt=prompt,
+            )
+            update_ai_response(conn, row["id"], answer, settings.openai_model, prompt)
+            if mode == "auto_send":
+                try:
+                    sent_payload = client.send_response(str(row["external_id"]), answer)
+                    mark_sent(conn, row["id"], answer, sent_payload)
+                except Exception as exc:
+                    print(f"Auto-send error for feedback {row['external_id']}: {exc}")
+        except Exception as exc:
+            mark_skipped(conn, row["id"], "ai_error")
+            print(f"AI error for feedback {row['external_id']}: {exc}")
 
 
 def sync_wb_account(conn, settings, account_row, save_raw: bool = True) -> int:

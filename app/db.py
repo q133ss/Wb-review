@@ -281,7 +281,7 @@ def get_new_feedbacks(conn: sqlite3.Connection, marketplace_id: int) -> list[sql
         """
         SELECT *
         FROM feedbacks
-        WHERE marketplace_id = ? AND status = 'new'
+        WHERE marketplace_id = ? AND status IN ('new', 'ai_error')
         ORDER BY created_at ASC
         """,
         (marketplace_id,),
